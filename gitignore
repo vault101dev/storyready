@@ -1,0 +1,22 @@
+# StoryReady .gitignore
+
+# Never commit API keys
+.env
+.env.local
+.env.production
+secrets.js
+config.local.js
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node (if ever adding a build step)
+node_modules/
+npm-debug.log
