@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StoryReady — AI-Powered Interview Story Coach</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0F1C2E; --navy-mid: #162236; --navy-light: #1E3050;
+      --teal: #00C4B4; --teal-dim: rgba(0,196,180,0.12); --teal-glow: rgba(0,196,180,0.25);
+      --amber: #F59E0B; --amber-dim: rgba(245,158,11,0.12);
+      --red: #EF4444; --red-dim: rgba(239,68,68,0.12);
+      --warm-white: #F7F5F1; --text-primary: #F7F5F1;
+      --text-secondary: #94A3B8; --text-muted: #64748B;
+      --border: rgba(255,255,255,0.07); --border-light: rgba(255,255,255,0.12);
+      --radius: 12px; --radius-sm: 8px; --radius-lg: 16px;
+    }
+    html, body { height: 100%; }
+    body { font-family: 'Inter', sans-serif; background: var(--navy); color: var(--text-primary); min-height: 100vh; overflow-x: hidden; }
+    #root { min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ── LANDING ── */
+    .landing { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,196,180,0.08) 0%, transparent 70%), linear-gradient(180deg, #0F1C2E 0%, #0A1520 100%); }
+    .landing-badge { display: inline-flex; align-items: center; gap: 8px; background: var(--teal-dim); border: 1px solid rgba(0,196,180,0.3);
+      border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 500; color: var(--teal); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 28px; }
+    .landing-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(0.8); } }
+    .landing h1 { font-size: clamp(36px,6vw,64px); font-weight: 700; text-align: center; line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 16px; max-width: 700px; }
+    .landing h1 span { background: linear-gradient(135deg, var(--teal) 0%, #5EEAD4 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .landing-sub { font-size: clamp(16px,2vw,19px); color: var(--text-secondary); text-align: center; max-width: 520px; line-height: 1.6; margin-bottom: 48px; }
+    .landing-features { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; max-width: 860px; width: 100%; margin-bottom: 48px; }
+    .feature-card { background: var(--navy-mid); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; text-align: center; }
+    .feature-icon { font-size: 24px; margin-bottom: 10px; }
+    .feature-title { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+    .feature-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+    .landing-ctas { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+    .landing-portfolio-count { font-size: 12px; color: var(--teal); margin-top: 16px; opacity: 0.8; }
+
+    /* ── BUTTONS ── */
+    .btn-primary { display: inline-flex; align-items: center; gap: 10px; background: var(--teal); color: var(--navy); font-size: 15px; font-weight: 600;
+      padding: 14px 32px; border-radius: var(--radius); border: none; cursor: pointer; transition: all 0.2s; letter-spacing: -0.01em; }
+    .btn-primary:hover { background: #00D4C4; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,196,180,0.3); }
+    .btn-secondary { display: inline-flex; align-items: center; gap: 8px; background: transparent; color: var(--text-secondary); font-size: 14px; font-weight: 500;
+      padding: 13px 24px; border-radius: var(--radius); border: 1px solid var(--border-light); cursor: pointer; transition: all 0.2s; }
+    .btn-secondary:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+    .btn-ghost { display: inline-flex; align-items: center; gap: 6px; background: transparent; color: var(--text-muted); font-size: 12px; font-weight: 500;
+      padding: 7px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; font-family: 'Inter',sans-serif; }
+    .btn-ghost:hover { color: var(--text-primary); border-color: var(--border-light); background: rgba(255,255,255,0.04); }
+    .btn-danger { display: inline-flex; align-items: center; gap: 6px; background: var(--red-dim); color: #F87171; font-size: 12px; font-weight: 500;
+      padding: 7px 12px; border-radius: var(--radius-sm); border: 1px solid rgba(239,68,68,0.25); cursor: pointer; transition: all 0.2s; font-family: 'Inter',sans-serif; }
+    .btn-danger:hover { background: rgba(239,68,68,0.2); }
+    .btn-teal { display: inline-flex; align-items: center; gap: 6px; background: var(--teal-dim); color: var(--teal); font-size: 12px; font-weight: 500;
+      padding: 7px 12px; border-radius: var(--radius-sm); border: 1px solid rgba(0,196,180,0.3); cursor: pointer; transition: all 0.2s; font-family: 'Inter',sans-serif; }
+    .btn-teal:hover { background: rgba(0,196,180,0.2); }
+
+    /* ── PROGRESS ── */
+    .progress-bar { height: 2px; background: var(--border); }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--teal), #5EEAD4); transition: width 0.5s ease; }
+
+    /* ── APP LAYOUT ── */
+    .app-layout { display: grid; grid-template-columns: 1fr 1fr; flex: 1; }
+
+    /* ── CHAT PANEL ── */
+    .chat-panel { display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--navy); min-height: 0; }
+    .chat-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--navy-mid); flex-shrink: 0; }
+    .chat-header-left { display: flex; align-items: center; gap: 10px; }
+    .logo-mark { width: 30px; height: 30px; background: var(--teal); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: var(--navy); }
+    .logo-text { font-size: 15px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
+    .logo-text span { color: var(--teal); }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .step-pill { font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; padding: 4px 10px; border-radius: 20px;
+      background: var(--navy-light); color: var(--text-muted); border: 1px solid var(--border); }
+    .step-pill.active { background: var(--teal-dim); color: var(--teal); border-color: rgba(0,196,180,0.3); }
+    .step-pill.done { background: rgba(16,185,129,0.1); color: #34D399; border-color: rgba(16,185,129,0.3); }
+
+    .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; scroll-behavior: smooth; min-height: 0; }
+    .chat-messages::-webkit-scrollbar { width: 4px; }
+    .chat-messages::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 2px; }
+
+    .msg { display: flex; gap: 10px; align-items: flex-start; animation: fadeUp 0.3s ease; }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .msg-avatar { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+    .msg-avatar.ai { background: var(--teal); color: var(--navy); }
+    .msg-avatar.user { background: var(--navy-light); color: var(--text-primary); border: 1px solid var(--border-light); }
+    .msg-bubble { flex: 1; font-size: 13.5px; line-height: 1.65; color: var(--text-primary); }
+    .msg-bubble.ai { background: var(--navy-mid); border: 1px solid var(--border); border-radius: 4px 12px 12px 12px; padding: 11px 14px; }
+    .msg-bubble.user { background: var(--teal-dim); border: 1px solid rgba(0,196,180,0.2); border-radius: 12px 4px 12px 12px; padding: 11px 14px; color: var(--warm-white); }
+
+    .typing-indicator { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+    .typing-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); animation: typing 1.2s infinite; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typing { 0%,60%,100% { opacity:0.3; transform:translateY(0); } 30% { opacity:1; transform:translateY(-3px); } }
+
+    .question-grid { display: flex; flex-direction: column; gap: 7px; margin-top: 8px; }
+    .question-btn { background: var(--navy-light); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 9px 14px;
+      text-align: left; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; font-family: 'Inter',sans-serif; line-height: 1.4; }
+    .question-btn:hover { background: var(--teal-dim); border-color: rgba(0,196,180,0.3); color: var(--text-primary); }
+    .question-btn.selected { background: var(--teal-dim); border-color: var(--teal); color: var(--teal); }
+
+    .chat-input-area { padding: 14px 20px; border-top: 1px solid var(--border); background: var(--navy-mid); flex-shrink: 0; }
+    .chat-input-wrap { display: flex; gap: 10px; align-items: flex-end; }
+    .chat-textarea { flex: 1; background: var(--navy-light); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 10px 14px;
+      font-size: 13.5px; font-family: 'Inter',sans-serif; color: var(--text-primary); resize: none; min-height: 44px; max-height: 140px; line-height: 1.5; transition: border-color 0.2s; }
+    .chat-textarea:focus { outline: none; border-color: var(--teal); }
+    .chat-textarea::placeholder { color: var(--text-muted); }
+    .chat-textarea:disabled { opacity: 0.5; cursor: not-allowed; }
+    .send-btn { width: 40px; height: 40px; background: var(--teal); border: none; border-radius: var(--radius-sm); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; color: var(--navy); font-size: 16px; }
+    .send-btn:hover { background: #00D4C4; transform: scale(1.05); }
+    .send-btn:disabled { background: var(--navy-light); color: var(--text-muted); cursor: not-allowed; transform: none; }
+    .chat-hint { font-size: 11px; color: var(--text-muted); margin-top: 8px; text-align: center; }
+
+    /* ── OUTPUT PANEL ── */
+    .output-panel { display: flex; flex-direction: column; background: var(--navy-mid); min-height: 0; }
+    .output-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--navy); flex-shrink: 0; }
+    .output-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .output-subtitle { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .output-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .output-content { flex: 1; overflow-y: auto; padding: 18px; min-height: 0; }
+    .output-content::-webkit-scrollbar { width: 4px; }
+    .output-content::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 2px; }
+
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 40px; gap: 12px; }
+    .empty-icon { width: 56px; height: 56px; background: var(--navy-light); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 4px; }
+    .empty-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+    .empty-desc { font-size: 13px; color: var(--text-secondary); max-width: 260px; line-height: 1.55; }
+
+    /* ── OUTPUT SECTIONS ── */
+    .output-section { margin-bottom: 18px; animation: fadeUp 0.4s ease; }
+    .section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .section-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; }
+    .badge-star { background: var(--teal-dim); color: var(--teal); border: 1px solid rgba(0,196,180,0.2); }
+    .badge-lp { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,158,11,0.2); }
+    .badge-fq { background: rgba(139,92,246,0.12); color: #A78BFA; border: 1px solid rgba(139,92,246,0.2); }
+    .badge-qm { background: rgba(236,72,153,0.1); color: #F472B6; border: 1px solid rgba(236,72,153,0.2); }
+
+    .refined-box { background: var(--navy); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.7; white-space: pre-wrap; }
+
+    .star-cards { display: flex; flex-direction: column; gap: 7px; }
+    .star-card { background: var(--navy); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+    .star-card-header { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+    .star-letter { width: 22px; height: 22px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+    .star-s { background: rgba(59,130,246,0.15); color: #60A5FA; }
+    .star-t { background: rgba(16,185,129,0.15); color: #34D399; }
+    .star-a { background: rgba(245,158,11,0.15); color: #FCD34D; }
+    .star-r { background: rgba(239,68,68,0.15); color: #F87171; }
+    .star-card-label { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+    .star-card-sublabel { font-size: 10px; color: var(--text-muted); margin-left: auto; text-transform: uppercase; letter-spacing: 0.04em; }
+    .star-card-body { padding: 10px 12px; font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+
+    .lp-grid { display: flex; flex-direction: column; gap: 6px; }
+    .lp-item { display: flex; align-items: flex-start; gap: 10px; background: var(--navy); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; }
+    .lp-icon-wrap { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+    .lp-content { flex: 1; }
+    .lp-name { font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
+    .lp-proof { font-size: 11.5px; color: var(--text-secondary); line-height: 1.5; }
+    .strength-tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px; flex-shrink: 0; }
+    .strength-strong { background: rgba(16,185,129,0.12); color: #34D399; }
+    .strength-moderate { background: rgba(59,130,246,0.12); color: #60A5FA; }
+
+    .fq-list { display: flex; flex-direction: column; gap: 6px; }
+    .fq-item { background: var(--navy); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; display: flex; gap: 10px; }
+    .fq-num { font-size: 11px; font-weight: 600; color: var(--text-muted); min-width: 18px; margin-top: 1px; }
+    .fq-content { flex: 1; }
+    .fq-q { font-size: 12.5px; color: var(--text-primary); margin-bottom: 4px; line-height: 1.45; font-weight: 500; }
+    .fq-why { font-size: 11.5px; color: var(--text-secondary); line-height: 1.5; }
+    .fq-tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px; flex-shrink: 0; align-self: flex-start; }
+    .tag-probe { background: rgba(239,68,68,0.1); color: #F87171; }
+    .tag-depth { background: rgba(245,158,11,0.1); color: #FCD34D; }
+    .tag-judgment { background: rgba(139,92,246,0.1); color: #A78BFA; }
+    .tag-scale { background: rgba(59,130,246,0.1); color: #60A5FA; }
+    .tag-collab { background: rgba(16,185,129,0.1); color: #34D399; }
+
+    .qm-list { display: flex; flex-direction: column; gap: 6px; }
+    .qm-item { background: var(--navy); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; display: flex; gap: 10px; }
+    .qm-fit { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px; flex-shrink: 0; align-self: flex-start; }
+    .fit-strong { background: rgba(16,185,129,0.12); color: #34D399; }
+    .fit-good { background: rgba(59,130,246,0.12); color: #60A5FA; }
+    .fit-pivot { background: rgba(245,158,11,0.12); color: #FCD34D; }
+
+    /* ── PORTFOLIO SCREEN ── */
+    .portfolio-screen { min-height: 100vh; display: flex; flex-direction: column; background: var(--navy); }
+    .portfolio-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 28px; border-bottom: 1px solid var(--border); background: var(--navy-mid); flex-shrink: 0; }
+    .portfolio-header-left { display: flex; align-items: center; gap: 16px; }
+    .portfolio-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+    .portfolio-count { font-size: 12px; color: var(--text-muted); }
+    .portfolio-content { flex: 1; overflow-y: auto; padding: 24px 28px; }
+    .portfolio-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; text-align: center; gap: 12px; }
+    .portfolio-grid { display: flex; flex-direction: column; gap: 16px; }
+
+    .portfolio-card { background: var(--navy-mid); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: border-color 0.2s; }
+    .portfolio-card:hover { border-color: var(--border-light); }
+    .portfolio-card-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 16px 18px; cursor: pointer; gap: 12px; }
+    .portfolio-card-meta { flex: 1; }
+    .portfolio-card-q { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; line-height: 1.4; }
+    .portfolio-card-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+    .portfolio-tag { font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 20px; background: var(--navy-light); color: var(--text-muted); border: 1px solid var(--border); }
+    .portfolio-card-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+    .portfolio-expand-btn { background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); font-size: 12px; transition: all 0.2s; }
+    .portfolio-expand-btn:hover { background: var(--navy-light); color: var(--text-primary); }
+    .portfolio-card-body { padding: 0 18px 16px; display: none; }
+    .portfolio-card-body.open { display: block; }
+    .portfolio-divider { height: 1px; background: var(--border); margin-bottom: 14px; }
+
+    /* ── CONFIRM DIALOG ── */
+    .dialog-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 200; animation: fadeIn 0.15s ease; }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+    .dialog { background: var(--navy-mid); border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 24px; max-width: 380px; width: 90%; }
+    .dialog-title { font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
+    .dialog-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.55; margin-bottom: 20px; }
+    .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+    /* ── TOAST ── */
+    .toast { position: fixed; bottom: 24px; right: 24px; background: var(--navy-mid); border: 1px solid var(--teal); border-radius: var(--radius-sm);
+      padding: 10px 16px; font-size: 13px; color: var(--teal); font-weight: 500; z-index: 300; animation: toastIn 0.3s ease; }
+    @keyframes toastIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+    @media (max-width: 768px) { .app-layout { grid-template-columns: 1fr; } .output-panel { display: none; } .landing-features { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useEffect, useCallback } = React;
+
+// ── CONSTANTS ──────────────────────────────────────────────────────────────────
+const PORTFOLIO_KEY = 'storyready_portfolio';
+const SESSION_CACHE_KEY = 'storyready_session_cache';
+
+const INTERVIEW_QUESTIONS = [
+  "Tell me about a time when you took a risk and failed.",
+  "Tell me about a time you were asked to do something unethical.",
+  "Tell me about a time you raised the bar on your team.",
+  "Tell me about a time you disagreed with your manager.",
+  "Tell me about a time you had to deliver results with limited resources.",
+  "Tell me about a time you had to prioritize ruthlessly.",
+  "Tell me about a time you influenced a team to adopt a new way of working.",
+  "Tell me about a time you managed a project where requirements kept changing.",
+  "Tell me about a time you used data to drive a decision others disagreed with.",
+  "Tell me about a time you managed a major pivot mid-project.",
+  "Tell me about a time you had to build alignment across teams with conflicting goals.",
+  "Tell me about a time you mentored or developed someone on your team.",
+  "Tell me about a time you navigated a compliance or regulatory risk.",
+  "Tell me about a time you had to make a fast decision with incomplete information.",
+  "Custom question (I'll type it in)",
+];
+
+const LP_ICONS = {
+  "Ownership": { icon: "🏆", color: "rgba(245,158,11,0.15)" },
+  "Customer obsession": { icon: "❤️", color: "rgba(239,68,68,0.1)" },
+  "Have backbone; disagree and commit": { icon: "🛡️", color: "rgba(139,92,246,0.12)" },
+  "Bias for action": { icon: "⚡", color: "rgba(0,196,180,0.12)" },
+  "Invent and simplify": { icon: "💡", color: "rgba(59,130,246,0.12)" },
+  "Are right, a lot": { icon: "⚖️", color: "rgba(16,185,129,0.12)" },
+  "Earn trust": { icon: "🤝", color: "rgba(245,158,11,0.12)" },
+  "Learn and be curious": { icon: "🔭", color: "rgba(139,92,246,0.12)" },
+  "Insist on the highest standards": { icon: "📈", color: "rgba(0,196,180,0.12)" },
+  "Think big": { icon: "🌍", color: "rgba(59,130,246,0.12)" },
+  "Deliver results": { icon: "📊", color: "rgba(16,185,129,0.12)" },
+  "Frugality": { icon: "💎", color: "rgba(245,158,11,0.12)" },
+  "Dive deep": { icon: "🔍", color: "rgba(239,68,68,0.1)" },
+};
+
+const FQ_TAG_MAP = { "Probe":"tag-probe","Depth":"tag-depth","Judgment":"tag-judgment","Scale":"tag-scale","Collaboration":"tag-collab" };
+
+// ── LOCAL STORAGE ──────────────────────────────────────────────────────────────
+function loadPortfolio() {
+  try { return JSON.parse(localStorage.getItem(PORTFOLIO_KEY) || '[]'); } catch { return []; }
+}
+function savePortfolio(portfolio) {
+  try { localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(portfolio)); } catch {}
+}
+function loadSessionCache() {
+  try { return JSON.parse(localStorage.getItem(SESSION_CACHE_KEY) || 'null'); } catch { return null; }
+}
+function saveSessionCache(cache) {
+  try { localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(cache)); } catch {}
+}
+function clearSessionCache() {
+  try { localStorage.removeItem(SESSION_CACHE_KEY); } catch {}
+}
+
+// ── API ────────────────────────────────────────────────────────────────────────
+async function callClaude(messages, systemPrompt) {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, system: systemPrompt, messages }),
+  });
+  const data = await response.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content[0].text;
+}
+
+const REFINE_PROMPT = `You are a world-class FAANG interview coach specializing in TPM behavioral interviews.
+Given a question and a raw story, return ONLY valid JSON:
+{
+  "refinedResponse": "Polished 3-5 paragraph story, no bullet points",
+  "star": { "situation": "2-4 sentences", "task": "2-3 sentences", "action": "3-5 sentences", "result": "2-4 sentences with metrics" },
+  "leadershipPrinciples": [{ "name": "LP name", "proof": "1-2 sentences", "strength": "Strong or Moderate" }],
+  "followUpQuestions": [{ "question": "Follow-up question", "why": "Why they'd ask this", "tag": "Probe or Depth or Judgment or Scale or Collaboration" }],
+  "questionMapping": [{ "question": "Other question this story answers", "why": "Why it fits", "fit": "Strong fit or Good fit or Pivot needed", "pivotTip": "Optional reframe tip" }]
+}
+Include 4-6 LPs, 6-8 follow-ups, 6-9 question mappings. Return ONLY the JSON object.`;
+
+const CHAT_PROMPT = `You are StoryReady, a friendly FAANG interview coach. Help job seekers craft STAR-format behavioral stories.
+Ask ONE specific follow-up question per turn to strengthen their story. Focus on: specific metrics, who pushed back, what the stakes were, what specifically changed, lasting impact.
+When you have enough detail (after 1-3 exchanges), say exactly: READY_TO_PROCESS
+Keep responses SHORT — 2-4 sentences max. Be direct and specific.`;
+
+// ── TEXT GENERATION ────────────────────────────────────────────────────────────
+function generateStoryText(question, output, index) {
+  const lines = [];
+  if (index !== undefined) { lines.push(`STORY ${index + 1}`); lines.push('═'.repeat(60)); }
+  lines.push(`QUESTION: ${question}`);
+  lines.push('');
+  lines.push('REFINED RESPONSE');
+  lines.push('─'.repeat(40));
+  lines.push(output.refinedResponse || '');
+  lines.push('');
+  lines.push('STAR FORMAT');
+  lines.push('─'.repeat(40));
+  if (output.star) {
+    ['situation','task','action','result'].forEach(k => {
+      lines.push(k.toUpperCase() + ':');
+      lines.push(output.star[k] || '');
+      lines.push('');
+    });
+  }
+  lines.push('LEADERSHIP PRINCIPLES');
+  lines.push('─'.repeat(40));
+  (output.leadershipPrinciples || []).forEach((lp,i) => {
+    lines.push(`${i+1}. ${lp.name} [${lp.strength}]`);
+    lines.push(`   ${lp.proof}`);
+    lines.push('');
+  });
+  lines.push('LIKELY FOLLOW-UP QUESTIONS');
+  lines.push('─'.repeat(40));
+  (output.followUpQuestions || []).forEach((fq,i) => {
+    lines.push(`${i+1}. [${fq.tag}] ${fq.question}`);
+    lines.push(`   → ${fq.why}`);
+    lines.push('');
+  });
+  lines.push('OTHER QUESTIONS THIS STORY ANSWERS');
+  lines.push('─'.repeat(40));
+  (output.questionMapping || []).forEach((qm,i) => {
+    lines.push(`${i+1}. [${qm.fit}] ${qm.question}`);
+    lines.push(`   → ${qm.why}`);
+    if (qm.pivotTip) lines.push(`   Tip: ${qm.pivotTip}`);
+    lines.push('');
+  });
+  return lines.join('\n');
+}
+
+function downloadText(content, filename) {
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── OUTPUT COMPONENTS ──────────────────────────────────────────────────────────
+function STAROutput({ star }) {
+  const cards = [
+    { key:'s', label:'Situation', sub:'Context & stakes', cls:'star-s', text: star?.situation },
+    { key:'t', label:'Task', sub:'Your ownership', cls:'star-t', text: star?.task },
+    { key:'a', label:'Action', sub:'What you did', cls:'star-a', text: star?.action },
+    { key:'r', label:'Result', sub:'Outcome & learnings', cls:'star-r', text: star?.result },
+  ];
+  return (
+    <div className="star-cards">
+      {cards.map(c => (
+        <div key={c.key} className="star-card">
+          <div className="star-card-header">
+            <div className={`star-letter ${c.cls}`}>{c.key.toUpperCase()}</div>
+            <span className="star-card-label">{c.label}</span>
+            <span className="star-card-sublabel">{c.sub}</span>
+          </div>
+          <div className="star-card-body">{c.text}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LPOutput({ principles }) {
+  return (
+    <div className="lp-grid">
+      {(principles || []).map((lp, i) => {
+        const meta = LP_ICONS[lp.name] || { icon:'✦', color:'rgba(255,255,255,0.06)' };
+        return (
+          <div key={i} className="lp-item">
+            <div className="lp-icon-wrap" style={{background: meta.color}}><span>{meta.icon}</span></div>
+            <div className="lp-content">
+              <div className="lp-name">{lp.name}</div>
+              <div className="lp-proof">{lp.proof}</div>
+            </div>
+            <span className={`strength-tag ${lp.strength==='Strong'?'strength-strong':'strength-moderate'}`}>{lp.strength}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function FQOutput({ questions }) {
+  return (
+    <div className="fq-list">
+      {(questions || []).map((fq, i) => (
+        <div key={i} className="fq-item">
+          <span className="fq-num">{i+1}</span>
+          <div className="fq-content">
+            <div className="fq-q">"{fq.question}"</div>
+            <div className="fq-why">{fq.why}</div>
+          </div>
+          <span className={`fq-tag ${FQ_TAG_MAP[fq.tag]||'tag-depth'}`}>{fq.tag}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function QMOutput({ mappings }) {
+  const fitClass = { 'Strong fit':'fit-strong','Good fit':'fit-good','Pivot needed':'fit-pivot' };
+  return (
+    <div className="qm-list">
+      {(mappings || []).map((qm, i) => (
+        <div key={i} className="qm-item">
+          <div style={{flex:1}}>
+            <div className="fq-q" style={{marginBottom:'4px'}}>"{qm.question}"</div>
+            <div className="fq-why">{qm.why}</div>
+            {qm.pivotTip && <div style={{fontSize:'11px',color:'#FCD34D',marginTop:'5px',borderTop:'1px solid rgba(255,255,255,0.06)',paddingTop:'5px'}}><b>Tip: </b>{qm.pivotTip}</div>}
+          </div>
+          <span className={`qm-fit ${fitClass[qm.fit]||'fit-good'}`}>{qm.fit}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FullOutput({ output }) {
+  return (
+    <>
+      <div className="output-section">
+        <div className="section-header"><span className="section-badge badge-star">✦ Refined Response</span></div>
+        <div className="refined-box">{output.refinedResponse}</div>
+      </div>
+      <div className="output-section">
+        <div className="section-header"><span className="section-badge badge-star">STAR Format</span></div>
+        <STAROutput star={output.star} />
+      </div>
+      <div className="output-section">
+        <div className="section-header"><span className="section-badge badge-lp">Leadership Principles</span></div>
+        <LPOutput principles={output.leadershipPrinciples} />
+      </div>
+      <div className="output-section">
+        <div className="section-header"><span className="section-badge badge-fq">Likely Follow-Up Questions</span></div>
+        <FQOutput questions={output.followUpQuestions} />
+      </div>
+      <div className="output-section">
+        <div className="section-header"><span className="section-badge badge-qm">Other Questions This Story Answers</span></div>
+        <QMOutput mappings={output.questionMapping} />
+      </div>
+    </>
+  );
+}
+
+// ── CONFIRM DIALOG ─────────────────────────────────────────────────────────────
+function ConfirmDialog({ title, desc, confirmLabel, onConfirm, onCancel, danger }) {
+  return (
+    <div className="dialog-overlay" onClick={onCancel}>
+      <div className="dialog" onClick={e => e.stopPropagation()}>
+        <div className="dialog-title">{title}</div>
+        <div className="dialog-desc">{desc}</div>
+        <div className="dialog-actions">
+          <button className="btn-ghost" onClick={onCancel}>Cancel</button>
+          <button className={danger ? "btn-danger" : "btn-teal"} onClick={onConfirm}>{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── TOAST ──────────────────────────────────────────────────────────────────────
+function Toast({ msg }) {
+  return msg ? <div className="toast">{msg}</div> : null;
+}
+
+// ── OUTPUT PANEL ───────────────────────────────────────────────────────────────
+function OutputPanel({ output, question, isProcessing, onSaveToPortfolio, alreadySaved }) {
+  const [toast, setToast] = useState(null);
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
+
+  const copyAll = () => {
+    if (!output) return;
+    navigator.clipboard.writeText(generateStoryText(question, output)).then(() => showToast('Copied to clipboard!'));
+  };
+  const download = () => {
+    if (!output) return;
+    downloadText(generateStoryText(question, output), 'StoryReady_Story.txt');
+    showToast('Downloaded!');
+  };
+
+  return (
+    <div className="output-panel">
+      <div className="output-header">
+        <div>
+          <div className="output-title">Your Story Output</div>
+          <div className="output-subtitle">
+            {output ? 'Ready to copy, download, or save to portfolio' : isProcessing ? 'Crafting your story...' : 'Complete the coaching session to see output'}
+          </div>
+        </div>
+        {output && (
+          <div className="output-actions">
+            {!alreadySaved && <button className="btn-ghost" onClick={onSaveToPortfolio}>📁 Save to Portfolio</button>}
+            {alreadySaved && <span style={{fontSize:'11px',color:'#34D399',display:'flex',alignItems:'center',gap:'4px'}}>✓ Saved</span>}
+            <button className="btn-ghost" onClick={copyAll}>📋 Copy</button>
+            <button className="btn-teal" onClick={download}>⬇ Download</button>
+          </div>
+        )}
+      </div>
+      <div className="output-content">
+        {!output && !isProcessing && (
+          <div className="empty-state">
+            <div className="empty-icon">📝</div>
+            <div className="empty-title">Your story will appear here</div>
+            <div className="empty-desc">Share your experience in the chat and StoryReady will craft your complete interview prep package.</div>
+          </div>
+        )}
+        {isProcessing && (
+          <div className="empty-state">
+            <div className="empty-icon" style={{background:'var(--teal-dim)'}}>✨</div>
+            <div className="empty-title" style={{color:'var(--teal)'}}>Crafting your story...</div>
+            <div className="empty-desc">Analyzing your experience and building your complete prep package.</div>
+          </div>
+        )}
+        {output && <FullOutput output={output} />}
+      </div>
+      <Toast msg={toast} />
+    </div>
+  );
+}
+
+// ── PORTFOLIO SCREEN ───────────────────────────────────────────────────────────
+function PortfolioScreen({ portfolio, onBack, onGoHome, onDeleteEntry, onDownloadAll }) {
+  const [expanded, setExpanded] = useState({});
+  const [toast, setToast] = useState(null);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
+
+  const toggle = (id) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+
+  const downloadOne = (entry) => {
+    downloadText(generateStoryText(entry.question, entry.output), `StoryReady_${entry.id}.txt`);
+    showToast('Downloaded!');
+  };
+
+  const handleDownloadAll = () => {
+    onDownloadAll();
+    showToast('Portfolio downloaded!');
+  };
+
+  const handleClearAll = () => {
+    setConfirmClear(false);
+    portfolio.forEach(e => onDeleteEntry(e.id));
+    showToast('Portfolio cleared.');
+  };
+
+  return (
+    <div className="portfolio-screen">
+      <div className="portfolio-header">
+        <div className="portfolio-header-left">
+          <button className="btn-ghost" onClick={onBack}>← Back</button>
+          <button className="btn-ghost" onClick={onGoHome}>⌂ Home</button>
+          <div>
+            <div className="portfolio-title">Story Portfolio</div>
+            <div className="portfolio-count">{portfolio.length} {portfolio.length === 1 ? 'story' : 'stories'} saved</div>
+          </div>
+        </div>
+        <div style={{display:'flex',gap:'8px'}}>
+          {portfolio.length > 0 && (
+            <>
+              <button className="btn-ghost" onClick={() => setConfirmClear(true)}>🗑 Clear All</button>
+              <button className="btn-teal" onClick={handleDownloadAll}>⬇ Download All</button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="portfolio-content">
+        {portfolio.length === 0 ? (
+          <div className="portfolio-empty">
+            <div className="empty-icon">📚</div>
+            <div className="empty-title">Your portfolio is empty</div>
+            <div className="empty-desc">Complete a story coaching session and save it to your portfolio to build your interview prep library.</div>
+            <button className="btn-primary" style={{marginTop:'8px',fontSize:'13px',padding:'11px 24px'}} onClick={onBack}>← Build a Story</button>
+          </div>
+        ) : (
+          <div className="portfolio-grid">
+            {portfolio.map((entry, idx) => (
+              <div key={entry.id} className="portfolio-card">
+                <div className="portfolio-card-header" onClick={() => toggle(entry.id)}>
+                  <div className="portfolio-card-meta">
+                    <div className="portfolio-card-q">
+                      <span style={{color:'var(--text-muted)',fontSize:'11px',fontWeight:600,marginRight:'8px'}}>#{idx+1}</span>
+                      {entry.question}
+                    </div>
+                    <div className="portfolio-card-tags">
+                      {(entry.output.leadershipPrinciples || []).filter(lp => lp.strength === 'Strong').slice(0,3).map((lp,i) => (
+                        <span key={i} className="portfolio-tag">{lp.name}</span>
+                      ))}
+                      <span className="portfolio-tag" style={{color:'var(--text-muted)'}}>
+                        {new Date(entry.savedAt).toLocaleDateString('en-US', {month:'short',day:'numeric'})}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="portfolio-card-actions" onClick={e => e.stopPropagation()}>
+                    <button className="btn-ghost" onClick={() => downloadOne(entry)}>⬇</button>
+                    <button className="btn-danger" onClick={() => onDeleteEntry(entry.id)}>✕</button>
+                    <button className="portfolio-expand-btn">{expanded[entry.id] ? '▲' : '▼'}</button>
+                  </div>
+                </div>
+                <div className={`portfolio-card-body ${expanded[entry.id] ? 'open' : ''}`}>
+                  <div className="portfolio-divider" />
+                  <FullOutput output={entry.output} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {confirmClear && (
+        <ConfirmDialog
+          title="Clear entire portfolio?"
+          desc="This will permanently delete all saved stories. This cannot be undone."
+          confirmLabel="Clear All"
+          onConfirm={handleClearAll}
+          onCancel={() => setConfirmClear(false)}
+          danger
+        />
+      )}
+      <Toast msg={toast} />
+    </div>
+  );
+}
+
+// ── LANDING PAGE ───────────────────────────────────────────────────────────────
+function LandingPage({ onStart, onViewPortfolio, portfolioCount }) {
+  return (
+    <div className="landing">
+      <div className="landing-badge">
+        <div className="landing-badge-dot" />
+        AI-Powered Interview Coach
+      </div>
+      <h1>Turn your experience into<br /><span>interview-winning stories</span></h1>
+      <p className="landing-sub">StoryReady coaches you through crafting STAR-format behavioral stories, maps them to leadership principles, and preps you for every follow-up.</p>
+      <div className="landing-features">
+        <div className="feature-card"><div className="feature-icon">✨</div><div className="feature-title">AI Story Refinement</div><div className="feature-desc">Transform rough experience into polished interview answers</div></div>
+        <div className="feature-card"><div className="feature-icon">🎯</div><div className="feature-title">STAR + LP Mapping</div><div className="feature-desc">Structured output mapped to FAANG leadership principles</div></div>
+        <div className="feature-card"><div className="feature-icon">📋</div><div className="feature-title">Follow-Up Prep</div><div className="feature-desc">Know every probe question before the interviewer asks it</div></div>
+        <div className="feature-card"><div className="feature-icon">📚</div><div className="feature-title">Story Portfolio</div><div className="feature-desc">Save, review, and download all your stories in one place</div></div>
+      </div>
+      <div className="landing-ctas">
+        <button className="btn-primary" onClick={onStart}>Build a Story →</button>
+        <button className="btn-secondary" onClick={onViewPortfolio}>View Portfolio {portfolioCount > 0 ? `(${portfolioCount})` : ''}</button>
+      </div>
+      {portfolioCount > 0 && <div className="landing-portfolio-count">✓ {portfolioCount} {portfolioCount===1?'story':'stories'} saved in your portfolio</div>}
+    </div>
+  );
+}
+
+// ── TYPING INDICATOR ───────────────────────────────────────────────────────────
+function TypingIndicator() {
+  return (
+    <div className="msg"><div className="msg-avatar ai">SR</div>
+      <div className="msg-bubble ai"><div className="typing-indicator"><div className="typing-dot"/><div className="typing-dot"/><div className="typing-dot"/></div></div>
+    </div>
+  );
+}
+
+// ── MAIN APP ───────────────────────────────────────────────────────────────────
+function App() {
+  const [screen, setScreen] = useState('landing'); // landing | app | portfolio
+  const [previousScreen, setPreviousScreen] = useState('landing');
+  const [step, setStep] = useState('question');
+  const [selectedQ, setSelectedQ] = useState('');
+  const [customQ, setCustomQ] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [output, setOutput] = useState(null);
+  const [conversationHistory, setConversationHistory] = useState([]);
+  const [progress, setProgress] = useState(0);
+  const [portfolio, setPortfolio] = useState(loadPortfolio);
+  const [outputSavedId, setOutputSavedId] = useState(null);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [toast, setToast] = useState(null);
+  const messagesEndRef = useRef(null);
+
+  const showToast = useCallback((msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); }, []);
+  const finalQuestion = selectedQ === "Custom question (I'll type it in)" ? customQ : selectedQ;
+
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
+
+  // ── Cache session state when navigating away ──
+  const cacheSession = useCallback(() => {
+    saveSessionCache({ step, selectedQ, customQ, messages, conversationHistory, output, progress, outputSavedId });
+  }, [step, selectedQ, customQ, messages, conversationHistory, output, progress, outputSavedId]);
+
+  // ── Restore session from cache ──
+  const restoreSession = useCallback(() => {
+    const cache = loadSessionCache();
+    if (cache) {
+      setStep(cache.step || 'question');
+      setSelectedQ(cache.selectedQ || '');
+      setCustomQ(cache.customQ || '');
+      setMessages(cache.messages || []);
+      setConversationHistory(cache.conversationHistory || []);
+      setOutput(cache.output || null);
+      setProgress(cache.progress || 0);
+      setOutputSavedId(cache.outputSavedId || null);
+      return true;
+    }
+    return false;
+  }, []);
+
+  const goToLanding = () => { cacheSession(); setScreen('landing'); };
+  const goToPortfolio = (from) => { cacheSession(); setPreviousScreen(from || screen); setScreen('portfolio'); };
+  const goBackFromPortfolio = () => {
+    if (previousScreen === 'app') { restoreSession(); setScreen('app'); }
+    else setScreen('landing');
+  };
+  const goToApp = () => {
+    const restored = restoreSession();
+    if (!restored) {
+      setStep('question');
+      setMessages([{ role:'ai', content:"Welcome to StoryReady! 👋 Choose a question to get started." }]);
+      setProgress(10);
+    }
+    setScreen('app');
+  };
+
+  const addMessage = (role, content) => setMessages(prev => [...prev, { role, content }]);
+
+  const handleQuestionSelect = (q) => {
+    setSelectedQ(q);
+    if (q !== "Custom question (I'll type it in)") {
+      setStep('story'); setProgress(25);
+      setMessages(prev => [...prev,
+        { role:'user', content: q },
+        { role:'ai', content: `Great choice. Share your story — as rough as it is. Tell me what happened, what you did, and what the outcome was.` }
+      ]);
+    }
+  };
+
+  const handleCustomQSubmit = () => {
+    if (!customQ.trim()) return;
+    setStep('story'); setProgress(25);
+    setMessages(prev => [...prev,
+      { role:'user', content: customQ },
+      { role:'ai', content: `Perfect. Share your story — as rough or polished as it is. Tell me what happened, what you did, and what the outcome was.` }
+    ]);
+  };
+
+  const processStory = async (fullHistory, storyText) => {
+    setIsProcessing(true); setProgress(80);
+    try {
+      const prompt = `Interview Question: "${finalQuestion}"\n\nUser's story:\n${storyText}`;
+      const result = await callClaude([{ role:'user', content: prompt }], REFINE_PROMPT);
+      let parsed;
+      try { parsed = JSON.parse(result); } catch { parsed = JSON.parse(result.replace(/```json|```/g,'').trim()); }
+      setOutput(parsed); setProgress(100); setStep('done');
+      addMessage('ai', "Your story is ready! 🎉 Check the output panel — you can copy, download, or save it to your portfolio.");
+    } catch (err) {
+      addMessage('ai', `Something went wrong: ${err.message}. Please try again.`);
+    } finally { setIsProcessing(false); }
+  };
+
+  const handleSend = async () => {
+    const text = input.trim();
+    if (!text || isTyping || isProcessing) return;
+    setInput('');
+    addMessage('user', text);
+    const newHistory = [...conversationHistory, { role:'user', content: text }];
+    setConversationHistory(newHistory);
+    if (step === 'story') { setStep('coaching'); setProgress(50); }
+    setIsTyping(true);
+    try {
+      const coachMessages = newHistory.map(m => ({ role: m.role==='ai'?'assistant':'user', content: m.content }));
+      const resp = await callClaude(coachMessages, CHAT_PROMPT);
+      setIsTyping(false);
+      if (resp.includes('READY_TO_PROCESS')) {
+        const clean = resp.replace('READY_TO_PROCESS','').trim();
+        if (clean) addMessage('ai', clean);
+        setProgress(70);
+        await processStory(newHistory, newHistory.filter(m=>m.role==='user').map(m=>m.content).join('\n\n'));
+      } else {
+        addMessage('ai', resp);
+        setConversationHistory([...newHistory, { role:'ai', content: resp }]);
+      }
+    } catch { setIsTyping(false); addMessage('ai', "Something went wrong. Please try again."); }
+  };
+
+  const handleKeyDown = (e) => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
+
+  const doReset = () => {
+    setConfirmReset(false);
+    clearSessionCache();
+    setStep('question'); setSelectedQ(''); setCustomQ('');
+    setMessages([{ role:'ai', content:"Session reset. Choose a new question to get started." }]);
+    setInput(''); setOutput(null); setConversationHistory([]); setProgress(10); setIsProcessing(false); setOutputSavedId(null);
+  };
+
+  const saveToPortfolio = () => {
+    if (!output) return;
+    const entry = { id: Date.now().toString(), question: finalQuestion, output, savedAt: new Date().toISOString() };
+    const updated = [...portfolio, entry];
+    setPortfolio(updated); savePortfolio(updated);
+    setOutputSavedId(entry.id);
+    showToast('Saved to portfolio!');
+  };
+
+  const deleteFromPortfolio = (id) => {
+    const updated = portfolio.filter(e => e.id !== id);
+    setPortfolio(updated); savePortfolio(updated);
+  };
+
+  const downloadPortfolio = () => {
+    if (!portfolio.length) return;
+    const header = ['STORYREADY — INTERVIEW STORY PORTFOLIO', `Generated ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}`, `${portfolio.length} stories`, '═'.repeat(60), ''].join('\n');
+    const body = portfolio.map((e,i) => generateStoryText(e.question, e.output, i)).join('\n\n' + '═'.repeat(60) + '\n\n');
+    downloadText(header + body, 'StoryReady_Portfolio.txt');
+  };
+
+  const inputDisabled = isTyping || isProcessing || step === 'done' || step === 'question';
+  const stepLabel = { question:'Step 1: Choose Question', story:'Step 2: Share Your Story', coaching:'Step 3: Coaching', done:'✓ Complete' };
+  const stepClass = step === 'done' ? 'done' : (step === 'coaching' || step === 'story') ? 'active' : '';
+
+  // ── SCREENS ──
+  if (screen === 'landing') return (
+    <LandingPage onStart={goToApp} onViewPortfolio={() => goToPortfolio('landing')} portfolioCount={portfolio.length} />
+  );
+
+  if (screen === 'portfolio') return (
+    <PortfolioScreen portfolio={portfolio} onBack={goBackFromPortfolio} onGoHome={goToLanding} onDeleteEntry={deleteFromPortfolio} onDownloadAll={downloadPortfolio} />
+  );
+
+  // APP SCREEN
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100vh',overflow:'hidden'}}>
+      <div className="progress-bar"><div className="progress-fill" style={{width:`${progress}%`}} /></div>
+      <div className="app-layout" style={{flex:1,overflow:'hidden'}}>
+        {/* CHAT */}
+        <div className="chat-panel">
+          <div className="chat-header">
+            <div className="chat-header-left">
+              <div className="logo-mark">S</div>
+              <span className="logo-text">Story<span>Ready</span></span>
+            </div>
+            <div className="header-actions">
+              <span className={`step-pill ${stepClass}`}>{stepLabel[step]}</span>
+              <button className="btn-ghost" onClick={goToLanding} title="Back to home">⌂ Home</button>
+              <button className="btn-ghost" onClick={() => goToPortfolio('app')} title="View portfolio">📚 {portfolio.length > 0 ? `(${portfolio.length})` : ''}</button>
+              <button className="btn-danger" onClick={() => setConfirmReset(true)} title="Reset session">↺ Reset</button>
+            </div>
+          </div>
+
+          <div className="chat-messages">
+            {messages.map((m, i) => (
+              <div key={i} className="msg">
+                <div className={`msg-avatar ${m.role}`}>{m.role==='ai'?'SR':'You'}</div>
+                <div className={`msg-bubble ${m.role}`}>{m.content}</div>
+              </div>
+            ))}
+
+            {step === 'question' && (
+              <div style={{animation:'fadeUp 0.3s ease'}}>
+                <div className="question-grid">
+                  {INTERVIEW_QUESTIONS.map((q, i) => (
+                    <button key={i} className={`question-btn ${selectedQ===q?'selected':''}`} onClick={() => handleQuestionSelect(q)}>{q}</button>
+                  ))}
+                </div>
+                {selectedQ === "Custom question (I'll type it in)" && (
+                  <div style={{marginTop:'12px',display:'flex',gap:'8px'}}>
+                    <input type="text" value={customQ} onChange={e=>setCustomQ(e.target.value)}
+                      placeholder="Type your interview question..."
+                      style={{flex:1,background:'var(--navy-light)',border:'1px solid var(--border-light)',borderRadius:'8px',padding:'10px 14px',fontSize:'13px',color:'var(--text-primary)',fontFamily:'Inter,sans-serif'}}
+                      onKeyDown={e=>e.key==='Enter'&&handleCustomQSubmit()} />
+                    <button className="btn-primary" style={{padding:'10px 16px',fontSize:'13px'}} onClick={handleCustomQSubmit}>Go</button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isTyping && <TypingIndicator />}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div className="chat-input-area">
+            <div className="chat-input-wrap">
+              <textarea className="chat-textarea" value={input} onChange={e=>setInput(e.target.value)} onKeyDown={handleKeyDown}
+                placeholder={step==='question'?'Select a question above...':step==='done'?'Story complete — reset or go home to start a new one.':step==='story'?'Share your story here — as rough as you want...':'Continue the conversation...'}
+                disabled={inputDisabled} rows={2} />
+              <button className="send-btn" onClick={handleSend} disabled={inputDisabled||!input.trim()}>↑</button>
+            </div>
+            <div className="chat-hint">Enter to send · Shift+Enter for new line</div>
+          </div>
+        </div>
+
+        {/* OUTPUT */}
+        <OutputPanel output={output} question={finalQuestion} isProcessing={isProcessing}
+          onSaveToPortfolio={saveToPortfolio} alreadySaved={!!outputSavedId} />
+      </div>
+
+      {confirmReset && (
+        <ConfirmDialog title="Reset this session?" desc="Your current coaching conversation and story output will be cleared. Anything already saved to your portfolio will be kept."
+          confirmLabel="Reset Session" onConfirm={doReset} onCancel={() => setConfirmReset(false)} danger />
+      )}
+      <Toast msg={toast} />
+    </div>
+  );
+}
+
+ReactDOM.render(<App />, document.getElementById('root'));
+</script>
+</body>
+</html>
