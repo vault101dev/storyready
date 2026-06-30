@@ -113,9 +113,16 @@
 
     .question-grid { display: flex; flex-direction: column; gap: 7px; margin-top: 8px; }
     .question-btn { background: var(--navy-light); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 9px 14px;
-      text-align: left; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; font-family: 'Inter',sans-serif; line-height: 1.4; }
+      text-align: left; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; font-family: 'Inter',sans-serif; line-height: 1.4;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .question-btn:hover { background: var(--teal-dim); border-color: rgba(0,196,180,0.3); color: var(--text-primary); }
     .question-btn.selected { background: var(--teal-dim); border-color: var(--teal); color: var(--teal); }
+    .question-btn.has-progress { border-color: rgba(0,196,180,0.25); }
+    .question-btn-text { flex: 1; }
+    .question-status-badge { font-size: 9.5px; font-weight: 700; padding: 3px 8px; border-radius: 20px; flex-shrink: 0; white-space: nowrap; letter-spacing: 0.02em; }
+    .status-in-progress { background: rgba(245,158,11,0.15); color: #FCD34D; }
+    .status-completed { background: rgba(16,185,129,0.15); color: #34D399; }
+    .custom-sessions-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
 
     .chat-input-area { padding: 14px 20px; border-top: 1px solid var(--border); background: var(--navy-mid); flex-shrink: 0; }
     .retry-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 20px;
@@ -314,7 +321,6 @@ const INTERVIEW_QUESTIONS = [
   "Tell me about a time you mentored or developed someone on your team.",
   "Tell me about a time you navigated a compliance or regulatory risk.",
   "Tell me about a time you had to make a fast decision with incomplete information.",
-  "Custom question (I'll type it in)",
 ];
 
 const LP_ICONS = {
@@ -342,14 +348,25 @@ function loadPortfolio() {
 function savePortfolio(portfolio) {
   try { localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(portfolio)); } catch {}
 }
-function loadSessionCache() {
-  try { return JSON.parse(localStorage.getItem(SESSION_CACHE_KEY) || 'null'); } catch { return null; }
+function loadAllSessions() {
+  try { return JSON.parse(localStorage.getItem(SESSION_CACHE_KEY) || '{}'); } catch { return {}; }
 }
-function saveSessionCache(cache) {
-  try { localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(cache)); } catch {}
+function saveAllSessions(sessions) {
+  try { localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(sessions)); } catch {}
 }
-function clearSessionCache() {
-  try { localStorage.removeItem(SESSION_CACHE_KEY); } catch {}
+function saveSessionFor(key, sessionData) {
+  const all = loadAllSessions();
+  all[key] = { ...sessionData, lastUpdated: new Date().toISOString() };
+  saveAllSessions(all);
+}
+function loadSessionFor(key) {
+  const all = loadAllSessions();
+  return all[key] || null;
+}
+function deleteSessionFor(key) {
+  const all = loadAllSessions();
+  delete all[key];
+  saveAllSessions(all);
 }
 function loadApiKey() {
   try { return localStorage.getItem(API_KEY_STORAGE) || ''; } catch { return ''; }
@@ -1423,7 +1440,7 @@ function OutputPanel({ output, question, isProcessing, onSaveToPortfolio, alread
 }
 
 // ── PORTFOLIO SCREEN ───────────────────────────────────────────────────────────
-function PortfolioScreen({ portfolio, onBack, onGoHome, onDeleteEntry }) {
+function PortfolioScreen({ portfolio, onBack, onGoHome, onDeleteEntry, onContinueBuilding }) {
   const [expanded, setExpanded] = useState({});
   const [toast, setToast] = useState(null);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -1476,6 +1493,11 @@ function PortfolioScreen({ portfolio, onBack, onGoHome, onDeleteEntry }) {
               <span className="portfolio-total-cost-label">Total spent</span>
               <span className="portfolio-total-cost-value">💰 {formatCost(totalCost)}</span>
             </div>
+          )}
+          {!selectMode && (
+            <button className="btn-primary" style={{padding:'9px 18px',fontSize:'13px'}} onClick={onContinueBuilding}>
+              ✦ Continue Building Stories
+            </button>
           )}
           {portfolio.length > 0 && !selectMode && (
             <>
@@ -1630,6 +1652,8 @@ function App() {
   const [step, setStep] = useState('question');
   const [selectedQ, setSelectedQ] = useState('');
   const [customQ, setCustomQ] = useState('');
+  const [sessionKey, setSessionKey] = useState(null); // stable cache key for the active in-progress story
+  const [inProgressMap, setInProgressMap] = useState(() => loadAllSessions()); // key -> { status, lastUpdated, ... } for question list indicators
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -1680,62 +1704,137 @@ function App() {
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
 
-  // ── Cache session state when navigating away ──
-  const cacheSession = useCallback(() => {
-    saveSessionCache({ step, selectedQ, customQ, messages, conversationHistory, output, progress, outputSavedId });
-  }, [step, selectedQ, customQ, messages, conversationHistory, output, progress, outputSavedId]);
+  // ── Auto-persist the active story's progress as it evolves, not just on navigation ──
+  useEffect(() => {
+    if (!sessionKey) return;
+    const status = step === 'done' ? 'completed' : 'in_progress';
+    saveSessionFor(sessionKey, {
+      status, step, selectedQ, customQ, messages, conversationHistory, output, progress,
+      outputSavedId, outputUsage, outputModel,
+    });
+    setInProgressMap(prev => ({ ...prev, [sessionKey]: { status, lastUpdated: new Date().toISOString() } }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionKey, step, messages, output, outputSavedId]);
 
-  // ── Restore session from cache ──
-  const restoreSession = useCallback(() => {
-    const cache = loadSessionCache();
-    if (cache) {
-      setStep(cache.step || 'question');
-      setSelectedQ(cache.selectedQ || '');
-      setCustomQ(cache.customQ || '');
-      setMessages(cache.messages || []);
-      setConversationHistory(cache.conversationHistory || []);
-      setOutput(cache.output || null);
-      setProgress(cache.progress || 0);
-      setOutputSavedId(cache.outputSavedId || null);
-      return true;
-    }
-    return false;
+  // ── Refresh the in-progress/completed indicator map from storage ──
+  const refreshInProgressMap = useCallback(() => {
+    setInProgressMap(loadAllSessions());
   }, []);
 
+  // ── Cache the current in-flight story under its own key ──
+  const cacheSession = useCallback(() => {
+    if (!sessionKey) return; // nothing started yet — nothing to cache
+    const status = step === 'done' ? 'completed' : 'in_progress';
+    saveSessionFor(sessionKey, {
+      status, step, selectedQ, customQ, messages, conversationHistory, output, progress,
+      outputSavedId, outputUsage, outputModel,
+    });
+    refreshInProgressMap();
+  }, [sessionKey, step, selectedQ, customQ, messages, conversationHistory, output, progress, outputSavedId, outputUsage, outputModel, refreshInProgressMap]);
+
+  // ── Resume a specific question's saved session ──
+  const resumeSession = useCallback((key) => {
+    const cache = loadSessionFor(key);
+    if (!cache) return false;
+    setSessionKey(key);
+    setStep(cache.step || 'question');
+    setSelectedQ(cache.selectedQ || '');
+    setCustomQ(cache.customQ || '');
+    setMessages(cache.messages || []);
+    setConversationHistory(cache.conversationHistory || []);
+    setOutput(cache.output || null);
+    setProgress(cache.progress || 0);
+    setOutputSavedId(cache.outputSavedId || null);
+    setOutputUsage(cache.outputUsage || null);
+    setOutputModel(cache.outputModel || null);
+    coachingCostThisStory.current = 0;
+    return true;
+  }, []);
+
+  // ── Begin a brand-new session for a question with no prior progress ──
+  const beginFreshSession = (key) => {
+    setSessionKey(key);
+    setStep('question');
+    setMessages([]);
+    setConversationHistory([]);
+    setOutput(null);
+    setProgress(10);
+    setOutputSavedId(null);
+    setOutputUsage(null);
+    setOutputModel(null);
+    setRetryAvailable(null);
+    coachingCostThisStory.current = 0;
+  };
+
   const goToLanding = () => { cacheSession(); setScreen('landing'); };
-  const goToPortfolio = (from) => { cacheSession(); setPreviousScreen(from || screen); setScreen('portfolio'); };
+  const goToPortfolio = (from) => { cacheSession(); setPreviousScreen(from || screen); refreshInProgressMap(); setScreen('portfolio'); };
   const goBackFromPortfolio = () => {
-    if (previousScreen === 'app') { restoreSession(); setScreen('app'); }
+    if (previousScreen === 'app' && sessionKey) { resumeSession(sessionKey); setScreen('app'); }
     else setScreen('landing');
   };
+  // "Continue Building Stories" from the Portfolio page — always lands on question selection
+  // so the user can see all their in-progress/completed indicators and pick where to go next.
+  const goToQuestionSelection = () => {
+    setSessionKey(null);
+    setStep('question');
+    setSelectedQ(''); setCustomQ('');
+    setMessages([{ role:'ai', content:"Welcome back! 👋 Pick up where you left off, or start a new story." }]);
+    setConversationHistory([]); setOutput(null); setProgress(10);
+    setOutputSavedId(null); setOutputUsage(null); setOutputModel(null); setRetryAvailable(null);
+    coachingCostThisStory.current = 0;
+    refreshInProgressMap();
+    setScreen('app');
+    if (!apiKey) setShowApiKeyModal(true);
+  };
   const goToApp = () => {
-    const restored = restoreSession();
+    // Returning to the app from the landing page resumes whatever was last active, if anything.
+    const restored = sessionKey ? resumeSession(sessionKey) : false;
     if (!restored) {
+      setSessionKey(null);
       setStep('question');
       setMessages([{ role:'ai', content:"Welcome to StoryReady! 👋 Choose a question to get started." }]);
       setProgress(10);
     }
+    refreshInProgressMap();
     setScreen('app');
     if (!apiKey) setShowApiKeyModal(true);
   };
 
   const addMessage = (role, content) => setMessages(prev => [...prev, { role, content }]);
 
+  // Stable key for a preset question is the question text itself. Custom questions get
+  // a generated id so two different custom entries (or edits) never collide.
+  const makeCustomKey = () => `custom:${Date.now()}`;
+
   const handleQuestionSelect = (q) => {
     setSelectedQ(q);
-    if (q !== "Custom question (I'll type it in)") {
-      setStep('story'); setProgress(25);
-      setMessages(prev => [...prev,
-        { role:'user', content: q },
-        { role:'ai', content: `Great choice. Share your story — as rough as it is. Tell me what happened, what you did, and what the outcome was.` }
-      ]);
+    if (q === "Custom question (I'll type it in)") return; // wait for the text input + Go button
+
+    const existing = inProgressMap[q];
+    if (existing) {
+      resumeSession(q);
+      setMessages(prev => {
+        const already = existing.messages || [];
+        return already.length ? already : prev;
+      });
+      return;
     }
+
+    beginFreshSession(q);
+    setStep('story'); setProgress(25);
+    setMessages([
+      { role:'user', content: q },
+      { role:'ai', content: `Great choice. Share your story — as rough as it is. Tell me what happened, what you did, and what the outcome was.` }
+    ]);
   };
 
   const handleCustomQSubmit = () => {
     if (!customQ.trim()) return;
+    const key = makeCustomKey();
+    beginFreshSession(key);
+    setSelectedQ("Custom question (I'll type it in)");
     setStep('story'); setProgress(25);
-    setMessages(prev => [...prev,
+    setMessages([
       { role:'user', content: customQ },
       { role:'ai', content: `Perfect. Share your story — as rough or polished as it is. Tell me what happened, what you did, and what the outcome was.` }
     ]);
@@ -1821,11 +1920,13 @@ function App() {
 
   const doReset = () => {
     setConfirmReset(false);
-    clearSessionCache();
+    if (sessionKey) deleteSessionFor(sessionKey);
+    setSessionKey(null);
     setStep('question'); setSelectedQ(''); setCustomQ('');
     setMessages([{ role:'ai', content:"Session reset. Choose a new question to get started." }]);
     setInput(''); setOutput(null); setConversationHistory([]); setProgress(10); setIsProcessing(false); setOutputSavedId(null); setRetryAvailable(null);
-    setOutputUsage(null); coachingCostThisStory.current = 0;
+    setOutputUsage(null); setOutputModel(null); coachingCostThisStory.current = 0;
+    refreshInProgressMap();
   };
 
   const saveToPortfolio = () => {
@@ -1861,7 +1962,7 @@ function App() {
   );
 
   if (screen === 'portfolio') return (
-    <PortfolioScreen portfolio={portfolio} onBack={goBackFromPortfolio} onGoHome={goToLanding} onDeleteEntry={deleteFromPortfolio} />
+    <PortfolioScreen portfolio={portfolio} onBack={goBackFromPortfolio} onGoHome={goToLanding} onDeleteEntry={deleteFromPortfolio} onContinueBuilding={goToQuestionSelection} />
   );
 
   // APP SCREEN
@@ -1901,10 +2002,53 @@ function App() {
             {step === 'question' && (
               <div style={{animation:'fadeUp 0.3s ease'}}>
                 <div className="question-grid">
-                  {INTERVIEW_QUESTIONS.map((q, i) => (
-                    <button key={i} className={`question-btn ${selectedQ===q?'selected':''}`} onClick={() => handleQuestionSelect(q)}>{q}</button>
-                  ))}
+                  {INTERVIEW_QUESTIONS.map((q, i) => {
+                    const session = inProgressMap[q];
+                    return (
+                      <button key={i} className={`question-btn ${selectedQ===q?'selected':''} ${session ? 'has-progress' : ''}`} onClick={() => handleQuestionSelect(q)}>
+                        <span className="question-btn-text">{q}</span>
+                        {session && (
+                          <span className={`question-status-badge ${session.status === 'completed' ? 'status-completed' : 'status-in-progress'}`}>
+                            {session.status === 'completed' ? '✓ Completed' : '● In Progress'}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
+
+                {Object.keys(inProgressMap).some(k => k.startsWith('custom:')) && (
+                  <div style={{marginTop:14}}>
+                    <div className="custom-sessions-label">Your custom questions</div>
+                    <div className="question-grid">
+                      {Object.entries(inProgressMap)
+                        .filter(([k]) => k.startsWith('custom:'))
+                        .sort((a,b) => new Date(b[1].lastUpdated||0) - new Date(a[1].lastUpdated||0))
+                        .map(([key, session]) => {
+                          const cached = loadSessionFor(key);
+                          const label = cached?.customQ || cached?.selectedQ || 'Custom question';
+                          return (
+                            <button key={key} className={`question-btn has-progress ${sessionKey===key?'selected':''}`} onClick={() => resumeSession(key)}>
+                              <span className="question-btn-text">{label}</span>
+                              <span className={`question-status-badge ${session.status === 'completed' ? 'status-completed' : 'status-in-progress'}`}>
+                                {session.status === 'completed' ? '✓ Completed' : '● In Progress'}
+                              </span>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{marginTop:14}}>
+                  <button
+                    className={`question-btn ${selectedQ==="Custom question (I'll type it in)"?'selected':''}`}
+                    onClick={() => handleQuestionSelect("Custom question (I'll type it in)")}
+                  >
+                    <span className="question-btn-text">✏️ Custom question (I'll type it in)</span>
+                  </button>
+                </div>
+
                 {selectedQ === "Custom question (I'll type it in)" && (
                   <div style={{marginTop:'12px',display:'flex',gap:'8px'}}>
                     <input type="text" value={customQ} onChange={e=>setCustomQ(e.target.value)}
