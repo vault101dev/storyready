@@ -541,7 +541,8 @@ function ApiKeyModal({ onSave, onCancel, existingKey, canCancel }) {
   );
 }
 
-
+// ── CONFIRM DIALOG ─────────────────────────────────────────────────────────────
+function ConfirmDialog({ title, desc, confirmLabel, onConfirm, onCancel, danger }) {
   return (
     <div className="dialog-overlay" onClick={onCancel}>
       <div className="dialog" onClick={e => e.stopPropagation()}>
