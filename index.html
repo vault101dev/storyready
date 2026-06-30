@@ -1958,7 +1958,7 @@ function App() {
 
   // ── SCREENS ──
   if (screen === 'landing') return (
-    <LandingPage onStart={goToApp} onViewPortfolio={() => goToPortfolio('landing')} portfolioCount={portfolio.length} />
+    <LandingPage onStart={goToQuestionSelection} onViewPortfolio={() => goToPortfolio('landing')} portfolioCount={portfolio.length} />
   );
 
   if (screen === 'portfolio') return (
