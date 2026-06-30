@@ -62,6 +62,13 @@
     .btn-teal:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn-teal:disabled:hover { background: var(--teal-dim); }
 
+    .download-menu-wrap { position: relative; display: inline-block; }
+    .download-menu { position: absolute; top: calc(100% + 6px); right: 0; background: var(--navy-mid); border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm); padding: 5px; min-width: 170px; z-index: 50; box-shadow: 0 8px 24px rgba(0,0,0,0.4); animation: fadeUp 0.15s ease; }
+    .download-menu-item { display: flex; align-items: center; gap: 9px; width: 100%; background: transparent; border: none; border-radius: 6px;
+      padding: 8px 10px; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; text-align: left; font-family: 'Inter',sans-serif; transition: all 0.12s; }
+    .download-menu-item:hover { background: rgba(0,196,180,0.1); color: var(--text-primary); }
+
     /* ── PROGRESS ── */
     .progress-bar { height: 2px; background: var(--border); }
     .progress-fill { height: 100%; background: linear-gradient(90deg, var(--teal), #5EEAD4); transition: width 0.5s ease; }
@@ -497,6 +504,291 @@ function downloadText(content, filename) {
   URL.revokeObjectURL(url);
 }
 
+function downloadBlob(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── CSV GENERATION ──────────────────────────────────────────────────────────────
+function csvEscape(val) {
+  if (val === null || val === undefined) return '';
+  const str = String(val).replace(/"/g, '""');
+  return `"${str}"`;
+}
+
+function generateStoryCsv(entries) {
+  // One row per story, columns for every major field — easy to open in Sheets/Excel.
+  const headers = ['Story #', 'Question', 'Refined Response', 'Situation', 'Task', 'Action', 'Result',
+    'Leadership Principles (Strong)', 'Leadership Principles (Moderate)',
+    'Follow-Up Questions', 'Other Questions This Story Answers', 'Date Saved', 'Cost'];
+  const rows = [headers.map(csvEscape).join(',')];
+
+  entries.forEach((entry, i) => {
+    const { question, output, savedAt, cost } = entry;
+    const star = output.star || {};
+    const strongLPs = (output.leadershipPrinciples || []).filter(lp => lp.strength === 'Strong').map(lp => lp.name).join('; ');
+    const moderateLPs = (output.leadershipPrinciples || []).filter(lp => lp.strength === 'Moderate').map(lp => lp.name).join('; ');
+    const followUps = (output.followUpQuestions || []).map(fq => `[${fq.tag}] ${fq.question}`).join(' | ');
+    const otherQs = (output.questionMapping || []).map(qm => `[${qm.fit}] ${qm.question}`).join(' | ');
+    const dateStr = savedAt ? new Date(savedAt).toLocaleDateString('en-US') : '';
+    const costStr = cost !== undefined ? formatCost(cost) : '';
+
+    rows.push([
+      i + 1, question, output.refinedResponse || '',
+      star.situation || '', star.task || '', star.action || '', star.result || '',
+      strongLPs, moderateLPs, followUps, otherQs, dateStr, costStr
+    ].map(csvEscape).join(','));
+  });
+
+  return rows.join('\n');
+}
+
+// ── WORD (.docx) GENERATION ───────────────────────────────────────────────────
+// Builds a real, valid .docx (WordprocessingML) file entirely client-side —
+// no server, no npm packages. Word, Google Docs, and LibreOffice all open this natively.
+function escapeXml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
+function docxHeading(text, level) {
+  const sz = level === 1 ? 32 : level === 2 ? 26 : 22;
+  return `<w:p><w:pPr><w:spacing w:before="240" w:after="120"/><w:outlineLvl w:val="${level-1}"/></w:pPr>
+    <w:r><w:rPr><w:b/><w:sz w:val="${sz}"/><w:color w:val="0F1C2E"/></w:rPr><w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r></w:p>`;
+}
+
+function docxParagraph(text, opts) {
+  opts = opts || {};
+  const bold = opts.bold ? '<w:b/>' : '';
+  const italic = opts.italic ? '<w:i/>' : '';
+  const color = opts.color ? `<w:color w:val="${opts.color}"/>` : '';
+  const sz = opts.size ? `<w:sz w:val="${opts.size}"/>` : '';
+  const spacing = opts.spacingAfter !== undefined ? opts.spacingAfter : 160;
+  return `<w:p><w:pPr><w:spacing w:after="${spacing}"/></w:pPr>
+    <w:r><w:rPr>${bold}${italic}${color}${sz}</w:rPr><w:t xml:space="preserve">${escapeXml(text || '')}</w:t></w:r></w:p>`;
+}
+
+function docxDivider() {
+  return `<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="CCCCCC"/></w:pBdr><w:spacing w:after="200"/></w:pPr></w:p>`;
+}
+
+function generateStoryDocxXml(entries) {
+  let body = '';
+  body += docxHeading('StoryReady — Interview Story Portfolio', 1);
+  body += docxParagraph(`Generated ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})} · ${entries.length} ${entries.length===1?'story':'stories'}`, { italic: true, color: '64748B', size: 20 });
+  body += docxDivider();
+
+  entries.forEach((entry, i) => {
+    const { question, output } = entry;
+    const star = output.star || {};
+
+    if (entries.length > 1) body += docxHeading(`Story ${i + 1}`, 1);
+    body += docxParagraph(`Question: ${question}`, { bold: true, size: 24 });
+    body += docxParagraph('');
+
+    body += docxHeading('Refined Response', 2);
+    body += docxParagraph(output.refinedResponse || '');
+
+    body += docxHeading('STAR Format', 2);
+    [['Situation', star.situation], ['Task', star.task], ['Action', star.action], ['Result', star.result]].forEach(([label, text]) => {
+      body += docxParagraph(label + ':', { bold: true, spacingAfter: 40 });
+      body += docxParagraph(text || '');
+    });
+
+    body += docxHeading('Leadership Principles', 2);
+    (output.leadershipPrinciples || []).forEach(lp => {
+      body += docxParagraph(`${lp.name} [${lp.strength}]`, { bold: true, spacingAfter: 40 });
+      body += docxParagraph(lp.proof || '');
+    });
+
+    body += docxHeading('Likely Follow-Up Questions', 2);
+    (output.followUpQuestions || []).forEach((fq, idx) => {
+      body += docxParagraph(`${idx+1}. [${fq.tag}] ${fq.question}`, { bold: true, spacingAfter: 40 });
+      body += docxParagraph(fq.why || '');
+    });
+
+    body += docxHeading('Other Questions This Story Answers', 2);
+    (output.questionMapping || []).forEach((qm, idx) => {
+      body += docxParagraph(`${idx+1}. [${qm.fit}] ${qm.question}`, { bold: true, spacingAfter: 40 });
+      body += docxParagraph(qm.why || '');
+      if (qm.pivotTip) body += docxParagraph(`Tip: ${qm.pivotTip}`, { italic: true, color: '854F0B' });
+    });
+
+    if (i < entries.length - 1) body += docxDivider();
+  });
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    ${body}
+    <w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>
+  </w:body>
+</w:document>`;
+}
+
+// Minimal valid DOCX = a ZIP with a few required XML parts. We build the ZIP by hand
+// (no library) using the browser's built-in CompressionStream where available, falling
+// back to an uncompressed (store-mode) ZIP, which Word/Google Docs/LibreOffice all accept.
+async function buildDocxBlob(documentXml) {
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`;
+
+  const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
+
+  const files = [
+    { name: '[Content_Types].xml', content: contentTypes },
+    { name: '_rels/.rels', content: rels },
+    { name: 'word/document.xml', content: documentXml },
+  ];
+
+  return buildZip(files);
+}
+
+// Tiny, dependency-free ZIP writer (STORE method = no compression, which is valid ZIP
+// and fully supported by every Office/Docs reader — avoids needing a compression library).
+function buildZip(files) {
+  const encoder = new TextEncoder();
+  const fileRecords = [];
+  const centralRecords = [];
+  let offset = 0;
+
+  function crc32(bytes) {
+    let crc = ~0;
+    for (let i = 0; i < bytes.length; i++) {
+      crc ^= bytes[i];
+      for (let j = 0; j < 8; j++) crc = (crc >>> 1) ^ (0xEDB88320 & -(crc & 1));
+    }
+    return ~crc >>> 0;
+  }
+
+  function writeUint32LE(arr, val) { arr.push(val & 0xFF, (val>>>8) & 0xFF, (val>>>16) & 0xFF, (val>>>24) & 0xFF); }
+  function writeUint16LE(arr, val) { arr.push(val & 0xFF, (val>>>8) & 0xFF); }
+
+  files.forEach(f => {
+    const nameBytes = encoder.encode(f.name);
+    const dataBytes = encoder.encode(f.content);
+    const crc = crc32(dataBytes);
+
+    const local = [];
+    writeUint32LE(local, 0x04034b50); // local file header signature
+    writeUint16LE(local, 20); // version needed
+    writeUint16LE(local, 0); // flags
+    writeUint16LE(local, 0); // compression = store
+    writeUint16LE(local, 0); // mod time
+    writeUint16LE(local, 0); // mod date
+    writeUint32LE(local, crc);
+    writeUint32LE(local, dataBytes.length); // compressed size
+    writeUint32LE(local, dataBytes.length); // uncompressed size
+    writeUint16LE(local, nameBytes.length);
+    writeUint16LE(local, 0); // extra field length
+    const localHeader = new Uint8Array(local);
+    const localRecord = new Uint8Array(localHeader.length + nameBytes.length + dataBytes.length);
+    localRecord.set(localHeader, 0);
+    localRecord.set(nameBytes, localHeader.length);
+    localRecord.set(dataBytes, localHeader.length + nameBytes.length);
+    fileRecords.push(localRecord);
+
+    const central = [];
+    writeUint32LE(central, 0x02014b50); // central directory signature
+    writeUint16LE(central, 20); // version made by
+    writeUint16LE(central, 20); // version needed
+    writeUint16LE(central, 0); // flags
+    writeUint16LE(central, 0); // compression
+    writeUint16LE(central, 0); // mod time
+    writeUint16LE(central, 0); // mod date
+    writeUint32LE(central, crc);
+    writeUint32LE(central, dataBytes.length);
+    writeUint32LE(central, dataBytes.length);
+    writeUint16LE(central, nameBytes.length);
+    writeUint16LE(central, 0); // extra length
+    writeUint16LE(central, 0); // comment length
+    writeUint16LE(central, 0); // disk number
+    writeUint16LE(central, 0); // internal attrs
+    writeUint32LE(central, 0); // external attrs
+    writeUint32LE(central, offset); // local header offset
+    const centralHeader = new Uint8Array(central);
+    const centralRecord = new Uint8Array(centralHeader.length + nameBytes.length);
+    centralRecord.set(centralHeader, 0);
+    centralRecord.set(nameBytes, centralHeader.length);
+    centralRecords.push(centralRecord);
+
+    offset += localRecord.length;
+  });
+
+  const centralStart = offset;
+  let centralSize = 0;
+  centralRecords.forEach(r => { centralSize += r.length; });
+
+  const end = [];
+  writeUint32LE(end, 0x06054b50); // end of central directory signature
+  writeUint16LE(end, 0); // disk number
+  writeUint16LE(end, 0); // disk with central dir
+  writeUint16LE(end, files.length); // entries on this disk
+  writeUint16LE(end, files.length); // total entries
+  writeUint32LE(end, centralSize);
+  writeUint32LE(end, centralStart);
+  writeUint16LE(end, 0); // comment length
+  const endRecord = new Uint8Array(end);
+
+  const totalSize = offset + centralSize + endRecord.length;
+  const zipBytes = new Uint8Array(totalSize);
+  let pos = 0;
+  fileRecords.forEach(r => { zipBytes.set(r, pos); pos += r.length; });
+  centralRecords.forEach(r => { zipBytes.set(r, pos); pos += r.length; });
+  zipBytes.set(endRecord, pos);
+
+  return new Blob([zipBytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+}
+
+async function downloadDocx(entries, filename) {
+  const xml = generateStoryDocxXml(entries);
+  const blob = await buildDocxBlob(xml);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── UNIFIED DOWNLOAD ROUTER ──────────────────────────────────────────────────────
+// entries: array of { question, output, savedAt?, cost? } — single-story downloads
+// pass a one-item array so all formats share the same code path.
+const DOWNLOAD_FORMATS = {
+  txt:    { label: 'Text (.txt)',       icon: '📄', ext: 'txt' },
+  csv:    { label: 'CSV (.csv)',        icon: '📊', ext: 'csv' },
+  docx:   { label: 'Word (.docx)',      icon: '📝', ext: 'docx' },
+  gdocs:  { label: 'Google Docs',       icon: '📑', ext: 'docx' },
+};
+
+async function triggerDownload(format, entries, baseFilename) {
+  if (!entries.length) return;
+  const filename = `${baseFilename}.${DOWNLOAD_FORMATS[format].ext}`;
+
+  if (format === 'txt') {
+    const isPartial = entries.length === 1 && entries[0].__single;
+    const header = entries.length > 1
+      ? ['STORYREADY — INTERVIEW STORY PORTFOLIO', `Generated ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}`, `${entries.length} stories`, '═'.repeat(60), ''].join('\n')
+      : '';
+    const body = entries.map((e,i) => generateStoryText(e.question, e.output, entries.length > 1 ? i : undefined)).join('\n\n' + '═'.repeat(60) + '\n\n');
+    downloadText(header + body, filename);
+  } else if (format === 'csv') {
+    downloadBlob(generateStoryCsv(entries), filename, 'text/csv;charset=utf-8');
+  } else if (format === 'docx' || format === 'gdocs') {
+    await downloadDocx(entries, filename);
+  }
+}
+
 // ── OUTPUT COMPONENTS ──────────────────────────────────────────────────────────
 function STAROutput({ star }) {
   const cards = [
@@ -719,6 +1011,73 @@ function ApiKeyModal({ onSave, onCancel, existingKey, selectedModel, onSelectMod
   );
 }
 
+// ── DOWNLOAD MENU ──────────────────────────────────────────────────────────────
+// A small dropdown attached to a "Download" trigger button, offering format choice.
+// `getEntries` is a function so callers can compute the entry list lazily (e.g. selected items).
+function DownloadMenu({ label, getEntries, baseFilename, buttonClass, disabled, onDownloaded }) {
+  const [open, setOpen] = useState(false);
+  const [showGDocsNote, setShowGDocsNote] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const handlePick = async (format) => {
+    if (format === 'gdocs') { setOpen(false); setShowGDocsNote(true); return; }
+    setOpen(false);
+    const entries = getEntries();
+    await triggerDownload(format, entries, baseFilename);
+    if (onDownloaded) onDownloaded(format, entries.length);
+  };
+
+  const confirmGDocs = async () => {
+    setShowGDocsNote(false);
+    const entries = getEntries();
+    await triggerDownload('gdocs', entries, baseFilename);
+    if (onDownloaded) onDownloaded('gdocs', entries.length);
+  };
+
+  return (
+    <div className="download-menu-wrap" ref={wrapRef}>
+      <button className={buttonClass || 'btn-teal'} onClick={() => setOpen(o => !o)} disabled={disabled}>
+        {label} <span style={{fontSize:9,marginLeft:2}}>▾</span>
+      </button>
+      {open && (
+        <div className="download-menu">
+          {Object.entries(DOWNLOAD_FORMATS).map(([key, fmt]) => (
+            <button key={key} className="download-menu-item" onClick={() => handlePick(key)}>
+              <span>{fmt.icon}</span><span>{fmt.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {showGDocsNote && (
+        <div className="dialog-overlay" onClick={() => setShowGDocsNote(false)}>
+          <div className="dialog" style={{maxWidth:420}} onClick={e => e.stopPropagation()}>
+            <div className="dialog-title">📑 Open in Google Docs</div>
+            <div className="dialog-desc">
+              Google Docs doesn't allow files to be created directly in your Drive from outside apps without a Google sign-in connection. Here's the fastest path instead:
+            </div>
+            <ol style={{fontSize:12.5,color:'var(--text-secondary)',lineHeight:1.8,paddingLeft:18,marginBottom:18}}>
+              <li>We'll download a Word (.docx) file, formatted and ready to go</li>
+              <li>Go to <a href="https://docs.google.com" target="_blank" rel="noopener" style={{color:'var(--teal)'}}>docs.google.com</a> → File → Open → Upload</li>
+              <li>Select the downloaded file — Google Docs converts it automatically</li>
+            </ol>
+            <div className="dialog-actions">
+              <button className="btn-ghost" onClick={() => setShowGDocsNote(false)}>Cancel</button>
+              <button className="btn-teal" onClick={confirmGDocs}>Download for Google Docs</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── CONFIRM DIALOG ─────────────────────────────────────────────────────────────
 function ConfirmDialog({ title, desc, confirmLabel, onConfirm, onCancel, danger }) {
   return (
@@ -749,11 +1108,6 @@ function OutputPanel({ output, question, isProcessing, onSaveToPortfolio, alread
     if (!output) return;
     navigator.clipboard.writeText(generateStoryText(question, output)).then(() => showToast('Copied to clipboard!'));
   };
-  const download = () => {
-    if (!output) return;
-    downloadText(generateStoryText(question, output), 'StoryReady_Story.txt');
-    showToast('Downloaded!');
-  };
 
   return (
     <div className="output-panel">
@@ -769,7 +1123,12 @@ function OutputPanel({ output, question, isProcessing, onSaveToPortfolio, alread
             {!alreadySaved && <button className="btn-ghost" onClick={onSaveToPortfolio}>📁 Save to Portfolio</button>}
             {alreadySaved && <span style={{fontSize:'11px',color:'#34D399',display:'flex',alignItems:'center',gap:'4px'}}>✓ Saved</span>}
             <button className="btn-ghost" onClick={copyAll}>📋 Copy</button>
-            <button className="btn-teal" onClick={download}>⬇ Download</button>
+            <DownloadMenu
+              label="⬇ Download"
+              getEntries={() => [{ question, output }]}
+              baseFilename="StoryReady_Story"
+              onDownloaded={() => showToast('Downloaded!')}
+            />
           </div>
         )}
       </div>
@@ -803,7 +1162,7 @@ function OutputPanel({ output, question, isProcessing, onSaveToPortfolio, alread
 }
 
 // ── PORTFOLIO SCREEN ───────────────────────────────────────────────────────────
-function PortfolioScreen({ portfolio, onBack, onGoHome, onDeleteEntry, onDownloadAll }) {
+function PortfolioScreen({ portfolio, onBack, onGoHome, onDeleteEntry }) {
   const [expanded, setExpanded] = useState({});
   const [toast, setToast] = useState(null);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -829,19 +1188,6 @@ function PortfolioScreen({ portfolio, onBack, onGoHome, onDeleteEntry, onDownloa
     setSelectedIds(all);
   };
   const deselectAll = () => setSelectedIds({});
-
-  const handleDownloadAll = () => {
-    onDownloadAll();
-    showToast('Portfolio downloaded!');
-  };
-
-  const handleDownloadSelected = () => {
-    const entries = portfolio.filter(e => selectedIds[e.id]);
-    if (!entries.length) return;
-    onDownloadAll(entries);
-    showToast(`Downloaded ${entries.length} ${entries.length === 1 ? 'story' : 'stories'}!`);
-    exitSelectMode();
-  };
 
   const handleClearAll = () => {
     setConfirmClear(false);
@@ -874,7 +1220,12 @@ function PortfolioScreen({ portfolio, onBack, onGoHome, onDeleteEntry, onDownloa
             <>
               <button className="btn-ghost" onClick={enterSelectMode}>☑ Select</button>
               <button className="btn-ghost" onClick={() => setConfirmClear(true)}>🗑 Clear All</button>
-              <button className="btn-teal" onClick={handleDownloadAll}>⬇ Download All</button>
+              <DownloadMenu
+                label="⬇ Download All"
+                getEntries={() => portfolio}
+                baseFilename="StoryReady_Portfolio"
+                onDownloaded={() => showToast('Portfolio downloaded!')}
+              />
             </>
           )}
         </div>
@@ -889,9 +1240,13 @@ function PortfolioScreen({ portfolio, onBack, onGoHome, onDeleteEntry, onDownloa
           </div>
           <div className="select-mode-bar-right">
             <button className="btn-ghost" onClick={exitSelectMode}>Cancel</button>
-            <button className="btn-teal" onClick={handleDownloadSelected} disabled={selectedCount === 0}>
-              ⬇ Download Selected {selectedCount > 0 ? `(${selectedCount})` : ''}
-            </button>
+            <DownloadMenu
+              label={`⬇ Download Selected ${selectedCount > 0 ? `(${selectedCount})` : ''}`}
+              getEntries={() => portfolio.filter(e => selectedIds[e.id])}
+              baseFilename="StoryReady_SelectedStories"
+              disabled={selectedCount === 0}
+              onDownloaded={(format, count) => { showToast(`Downloaded ${count} ${count === 1 ? 'story' : 'stories'}!`); exitSelectMode(); }}
+            />
           </div>
         </div>
       )}
@@ -1235,15 +1590,6 @@ function App() {
     setPortfolio(updated); savePortfolio(updated);
   };
 
-  const downloadPortfolio = (entriesToDownload) => {
-    const entries = entriesToDownload || portfolio;
-    if (!entries.length) return;
-    const isPartial = entries.length !== portfolio.length;
-    const header = ['STORYREADY — INTERVIEW STORY PORTFOLIO', `Generated ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}`, `${entries.length} ${isPartial ? 'selected ' : ''}stories`, '═'.repeat(60), ''].join('\n');
-    const body = entries.map((e,i) => generateStoryText(e.question, e.output, i)).join('\n\n' + '═'.repeat(60) + '\n\n');
-    downloadText(header + body, isPartial ? 'StoryReady_SelectedStories.txt' : 'StoryReady_Portfolio.txt');
-  };
-
   const inputDisabled = isTyping || isProcessing || step === 'done' || step === 'question';
   const stepLabel = { question:'Step 1: Choose Question', story:'Step 2: Share Your Story', coaching:'Step 3: Coaching', done:'✓ Complete' };
   const stepClass = step === 'done' ? 'done' : (step === 'coaching' || step === 'story') ? 'active' : '';
@@ -1254,7 +1600,7 @@ function App() {
   );
 
   if (screen === 'portfolio') return (
-    <PortfolioScreen portfolio={portfolio} onBack={goBackFromPortfolio} onGoHome={goToLanding} onDeleteEntry={deleteFromPortfolio} onDownloadAll={downloadPortfolio} />
+    <PortfolioScreen portfolio={portfolio} onBack={goBackFromPortfolio} onGoHome={goToLanding} onDeleteEntry={deleteFromPortfolio} />
   );
 
   // APP SCREEN
