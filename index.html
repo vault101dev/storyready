@@ -235,6 +235,7 @@ const { useState, useRef, useEffect, useCallback } = React;
 // ── CONSTANTS ──────────────────────────────────────────────────────────────────
 const PORTFOLIO_KEY = 'storyready_portfolio';
 const SESSION_CACHE_KEY = 'storyready_session_cache';
+const API_KEY_STORAGE = 'storyready_api_key';
 
 const INTERVIEW_QUESTIONS = [
   "Tell me about a time when you took a risk and failed.",
@@ -288,16 +289,34 @@ function saveSessionCache(cache) {
 function clearSessionCache() {
   try { localStorage.removeItem(SESSION_CACHE_KEY); } catch {}
 }
+function loadApiKey() {
+  try { return localStorage.getItem(API_KEY_STORAGE) || ''; } catch { return ''; }
+}
+function saveApiKey(key) {
+  try { localStorage.setItem(API_KEY_STORAGE, key); } catch {}
+}
+function clearApiKey() {
+  try { localStorage.removeItem(API_KEY_STORAGE); } catch {}
+}
 
 // ── API ────────────────────────────────────────────────────────────────────────
-async function callClaude(messages, systemPrompt) {
+async function callClaude(messages, systemPrompt, apiKey) {
+  if (!apiKey) throw new Error('NO_API_KEY');
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
     body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, system: systemPrompt, messages }),
   });
   const data = await response.json();
-  if (data.error) throw new Error(data.error.message);
+  if (data.error) {
+    if (data.error.type === 'authentication_error') throw new Error('INVALID_API_KEY');
+    throw new Error(data.error.message);
+  }
   return data.content[0].text;
 }
 
@@ -475,8 +494,54 @@ function FullOutput({ output }) {
   );
 }
 
-// ── CONFIRM DIALOG ─────────────────────────────────────────────────────────────
-function ConfirmDialog({ title, desc, confirmLabel, onConfirm, onCancel, danger }) {
+// ── API KEY MODAL ──────────────────────────────────────────────────────────────
+function ApiKeyModal({ onSave, onCancel, existingKey, canCancel }) {
+  const [key, setKey] = useState(existingKey || '');
+  const [showKey, setShowKey] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSave = () => {
+    const trimmed = key.trim();
+    if (!trimmed) { setError('Please enter an API key.'); return; }
+    if (!trimmed.startsWith('sk-ant-')) { setError('That doesn\'t look like a valid Anthropic API key. Keys start with "sk-ant-".'); return; }
+    onSave(trimmed);
+  };
+
+  return (
+    <div className="dialog-overlay" onClick={canCancel ? onCancel : undefined}>
+      <div className="dialog" style={{maxWidth:440}} onClick={e => e.stopPropagation()}>
+        <div className="dialog-title">🔑 Connect Your Claude API Key</div>
+        <div className="dialog-desc">
+          StoryReady runs on your own Anthropic API key — your usage, your cost, your data never touches our servers because we don't have any. Your key is stored only in your browser's local storage and is sent directly to Anthropic.
+        </div>
+        <div style={{marginBottom:14}}>
+          <div style={{display:'flex',gap:8}}>
+            <input
+              type={showKey ? 'text' : 'password'}
+              value={key}
+              onChange={e => { setKey(e.target.value); setError(''); }}
+              placeholder="sk-ant-api03-..."
+              style={{flex:1,background:'var(--navy-light)',border:`1px solid ${error?'var(--red)':'var(--border-light)'}`,borderRadius:8,padding:'10px 14px',fontSize:13,color:'var(--text-primary)',fontFamily:'monospace'}}
+              onKeyDown={e => e.key==='Enter' && handleSave()}
+              autoFocus
+            />
+            <button className="btn-ghost" onClick={() => setShowKey(!showKey)} style={{padding:'10px 12px'}}>{showKey ? '🙈' : '👁'}</button>
+          </div>
+          {error && <div style={{fontSize:11,color:'#F87171',marginTop:6}}>{error}</div>}
+        </div>
+        <div style={{background:'var(--navy)',border:'1px solid var(--border)',borderRadius:8,padding:'10px 12px',marginBottom:18,fontSize:11.5,color:'var(--text-secondary)',lineHeight:1.55}}>
+          Don't have a key? Get one free at <a href="https://console.anthropic.com" target="_blank" rel="noopener" style={{color:'var(--teal)'}}>console.anthropic.com</a> → API Keys → Create Key. New accounts get free starting credits.
+        </div>
+        <div className="dialog-actions">
+          {canCancel && <button className="btn-ghost" onClick={onCancel}>Cancel</button>}
+          <button className="btn-teal" onClick={handleSave}>Save & Continue</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
   return (
     <div className="dialog-overlay" onClick={onCancel}>
       <div className="dialog" onClick={e => e.stopPropagation()}>
@@ -676,6 +741,9 @@ function LandingPage({ onStart, onViewPortfolio, portfolioCount }) {
         <button className="btn-secondary" onClick={onViewPortfolio}>View Portfolio {portfolioCount > 0 ? `(${portfolioCount})` : ''}</button>
       </div>
       {portfolioCount > 0 && <div className="landing-portfolio-count">✓ {portfolioCount} {portfolioCount===1?'story':'stories'} saved in your portfolio</div>}
+      <div style={{fontSize:11,color:'var(--text-muted)',marginTop:14,maxWidth:380,textAlign:'center',lineHeight:1.5}}>
+        🔑 Runs on your own Anthropic API key — stored only in your browser, never on our servers.
+      </div>
     </div>
   );
 }
@@ -707,10 +775,31 @@ function App() {
   const [outputSavedId, setOutputSavedId] = useState(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [toast, setToast] = useState(null);
+  const [apiKey, setApiKey] = useState(loadApiKey);
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null); // stores what to do after key is provided
   const messagesEndRef = useRef(null);
 
   const showToast = useCallback((msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); }, []);
   const finalQuestion = selectedQ === "Custom question (I'll type it in)" ? customQ : selectedQ;
+
+  const handleSaveApiKey = (key) => {
+    setApiKey(key);
+    saveApiKey(key);
+    setShowApiKeyModal(false);
+    showToast('API key saved!');
+  };
+
+  const handleClearApiKey = () => {
+    setApiKey('');
+    clearApiKey();
+    showToast('API key removed.');
+  };
+
+  const requireApiKey = () => {
+    if (!apiKey) { setShowApiKeyModal(true); return false; }
+    return true;
+  };
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
 
@@ -750,6 +839,7 @@ function App() {
       setProgress(10);
     }
     setScreen('app');
+    if (!apiKey) setShowApiKeyModal(true);
   };
 
   const addMessage = (role, content) => setMessages(prev => [...prev, { role, content }]);
@@ -778,19 +868,22 @@ function App() {
     setIsProcessing(true); setProgress(80);
     try {
       const prompt = `Interview Question: "${finalQuestion}"\n\nUser's story:\n${storyText}`;
-      const result = await callClaude([{ role:'user', content: prompt }], REFINE_PROMPT);
+      const result = await callClaude([{ role:'user', content: prompt }], REFINE_PROMPT, apiKey);
       let parsed;
       try { parsed = JSON.parse(result); } catch { parsed = JSON.parse(result.replace(/```json|```/g,'').trim()); }
       setOutput(parsed); setProgress(100); setStep('done');
       addMessage('ai', "Your story is ready! 🎉 Check the output panel — you can copy, download, or save it to your portfolio.");
     } catch (err) {
-      addMessage('ai', `Something went wrong: ${err.message}. Please try again.`);
+      if (err.message === 'NO_API_KEY') { setShowApiKeyModal(true); setProgress(70); }
+      else if (err.message === 'INVALID_API_KEY') { addMessage('ai', "That API key was rejected by Anthropic. Please check it and try again."); setApiKey(''); clearApiKey(); setShowApiKeyModal(true); }
+      else addMessage('ai', `Something went wrong: ${err.message}. Please try again.`);
     } finally { setIsProcessing(false); }
   };
 
   const handleSend = async () => {
     const text = input.trim();
     if (!text || isTyping || isProcessing) return;
+    if (!requireApiKey()) return;
     setInput('');
     addMessage('user', text);
     const newHistory = [...conversationHistory, { role:'user', content: text }];
@@ -799,7 +892,7 @@ function App() {
     setIsTyping(true);
     try {
       const coachMessages = newHistory.map(m => ({ role: m.role==='ai'?'assistant':'user', content: m.content }));
-      const resp = await callClaude(coachMessages, CHAT_PROMPT);
+      const resp = await callClaude(coachMessages, CHAT_PROMPT, apiKey);
       setIsTyping(false);
       if (resp.includes('READY_TO_PROCESS')) {
         const clean = resp.replace('READY_TO_PROCESS','').trim();
@@ -810,7 +903,12 @@ function App() {
         addMessage('ai', resp);
         setConversationHistory([...newHistory, { role:'ai', content: resp }]);
       }
-    } catch { setIsTyping(false); addMessage('ai', "Something went wrong. Please try again."); }
+    } catch (err) {
+      setIsTyping(false);
+      if (err.message === 'NO_API_KEY') { setShowApiKeyModal(true); }
+      else if (err.message === 'INVALID_API_KEY') { addMessage('ai', "That API key was rejected by Anthropic. Please check it and try again."); setApiKey(''); clearApiKey(); setShowApiKeyModal(true); }
+      else addMessage('ai', "Something went wrong. Please try again.");
+    }
   };
 
   const handleKeyDown = (e) => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
@@ -871,6 +969,9 @@ function App() {
             </div>
             <div className="header-actions">
               <span className={`step-pill ${stepClass}`}>{stepLabel[step]}</span>
+              <button className="btn-ghost" onClick={() => setShowApiKeyModal(true)} title="Manage API key">
+                {apiKey ? '🔑 Key Connected' : '🔑 Connect Key'}
+              </button>
               <button className="btn-ghost" onClick={goToLanding} title="Back to home">⌂ Home</button>
               <button className="btn-ghost" onClick={() => goToPortfolio('app')} title="View portfolio">📚 {portfolio.length > 0 ? `(${portfolio.length})` : ''}</button>
               <button className="btn-danger" onClick={() => setConfirmReset(true)} title="Reset session">↺ Reset</button>
@@ -927,6 +1028,9 @@ function App() {
       {confirmReset && (
         <ConfirmDialog title="Reset this session?" desc="Your current coaching conversation and story output will be cleared. Anything already saved to your portfolio will be kept."
           confirmLabel="Reset Session" onConfirm={doReset} onCancel={() => setConfirmReset(false)} danger />
+      )}
+      {showApiKeyModal && (
+        <ApiKeyModal existingKey={apiKey} canCancel={!!apiKey} onSave={handleSaveApiKey} onCancel={() => setShowApiKeyModal(false)} />
       )}
       <Toast msg={toast} />
     </div>
