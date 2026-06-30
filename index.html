@@ -59,6 +59,8 @@
     .btn-teal { display: inline-flex; align-items: center; gap: 6px; background: var(--teal-dim); color: var(--teal); font-size: 12px; font-weight: 500;
       padding: 7px 12px; border-radius: var(--radius-sm); border: 1px solid rgba(0,196,180,0.3); cursor: pointer; transition: all 0.2s; font-family: 'Inter',sans-serif; }
     .btn-teal:hover { background: rgba(0,196,180,0.2); }
+    .btn-teal:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-teal:disabled:hover { background: var(--teal-dim); }
 
     /* ── PROGRESS ── */
     .progress-bar { height: 2px; background: var(--border); }
@@ -79,6 +81,7 @@
       background: var(--navy-light); color: var(--text-muted); border: 1px solid var(--border); }
     .step-pill.active { background: var(--teal-dim); color: var(--teal); border-color: rgba(0,196,180,0.3); }
     .step-pill.done { background: rgba(16,185,129,0.1); color: #34D399; border-color: rgba(16,185,129,0.3); }
+    .cost-pill { font-size: 10px; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: var(--teal-dim); color: var(--teal); border: 1px solid rgba(0,196,180,0.3); }
 
     .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; scroll-behavior: smooth; min-height: 0; }
     .chat-messages::-webkit-scrollbar { width: 4px; }
@@ -106,6 +109,9 @@
     .question-btn.selected { background: var(--teal-dim); border-color: var(--teal); color: var(--teal); }
 
     .chat-input-area { padding: 14px 20px; border-top: 1px solid var(--border); background: var(--navy-mid); flex-shrink: 0; }
+    .retry-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 20px;
+      background: var(--amber-dim); border-top: 1px solid rgba(245,158,11,0.25); border-bottom: 1px solid rgba(245,158,11,0.25);
+      font-size: 12.5px; color: #FCD34D; flex-shrink: 0; animation: fadeUp 0.3s ease; }
     .chat-input-wrap { display: flex; gap: 10px; align-items: flex-end; }
     .chat-textarea { flex: 1; background: var(--navy-light); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 10px 14px;
       font-size: 13.5px; font-family: 'Inter',sans-serif; color: var(--text-primary); resize: none; min-height: 44px; max-height: 140px; line-height: 1.5; transition: border-color 0.2s; }
@@ -125,6 +131,10 @@
     .output-subtitle { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
     .output-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .output-content { flex: 1; overflow-y: auto; padding: 18px; min-height: 0; }
+    .usage-bar { display: flex; align-items: center; gap: 8px; padding: 8px 20px; background: rgba(0,196,180,0.04); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .usage-chip { font-size: 11px; font-weight: 500; color: var(--text-secondary); background: var(--navy); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; }
+    .usage-chip-cost { color: var(--teal); border-color: rgba(0,196,180,0.25); }
+    .usage-model-label { font-size: 10px; color: var(--text-muted); margin-left: auto; }
     .output-content::-webkit-scrollbar { width: 4px; }
     .output-content::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 2px; }
 
@@ -135,6 +145,12 @@
 
     /* ── OUTPUT SECTIONS ── */
     .output-section { margin-bottom: 18px; animation: fadeUp 0.4s ease; }
+    .output-tabs-row { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+    .output-tab-btn { background: transparent; border: none; border-bottom: 2px solid transparent; padding: 8px 4px; margin-right: 16px;
+      font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: all 0.15s; font-family: 'Inter',sans-serif; }
+    .output-tab-btn:hover { color: var(--text-secondary); }
+    .output-tab-btn.active { color: var(--teal); border-bottom-color: var(--teal); }
+    .output-tab-panel { animation: fadeUp 0.25s ease; }
     .section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
     .section-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; }
     .badge-star { background: var(--teal-dim); color: var(--teal); border: 1px solid rgba(0,196,180,0.2); }
@@ -192,12 +208,28 @@
     .portfolio-header-left { display: flex; align-items: center; gap: 16px; }
     .portfolio-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
     .portfolio-count { font-size: 12px; color: var(--text-muted); }
+    .portfolio-total-cost { display: flex; flex-direction: column; align-items: flex-end; background: var(--teal-dim); border: 1px solid rgba(0,196,180,0.3);
+      border-radius: var(--radius-sm); padding: 6px 14px; }
+    .portfolio-total-cost-label { font-size: 9.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .portfolio-total-cost-value { font-size: 14px; font-weight: 700; color: var(--teal); }
     .portfolio-content { flex: 1; overflow-y: auto; padding: 24px 28px; }
     .portfolio-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; text-align: center; gap: 12px; }
     .portfolio-grid { display: flex; flex-direction: column; gap: 16px; }
 
-    .portfolio-card { background: var(--navy-mid); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: border-color 0.2s; }
+    .portfolio-card { background: var(--navy-mid); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: border-color 0.2s, background 0.2s; }
     .portfolio-card:hover { border-color: var(--border-light); }
+    .portfolio-card.card-selected { border-color: var(--teal); background: rgba(0,196,180,0.05); }
+
+    .select-mode-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 28px;
+      background: var(--teal-dim); border-bottom: 1px solid rgba(0,196,180,0.25); flex-shrink: 0; animation: fadeUp 0.2s ease; }
+    .select-mode-bar-left { display: flex; align-items: center; gap: 12px; }
+    .select-mode-bar-right { display: flex; align-items: center; gap: 8px; }
+    .select-mode-count { font-size: 12.5px; font-weight: 600; color: var(--teal); }
+
+    .portfolio-checkbox-wrap { display: flex; align-items: center; padding-right: 4px; flex-shrink: 0; }
+    .portfolio-checkbox { width: 20px; height: 20px; border-radius: 5px; border: 1.5px solid var(--border-light); background: var(--navy);
+      display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--navy); cursor: pointer; transition: all 0.15s; }
+    .portfolio-checkbox.checked { background: var(--teal); border-color: var(--teal); }
     .portfolio-card-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 16px 18px; cursor: pointer; gap: 12px; }
     .portfolio-card-meta { flex: 1; }
     .portfolio-card-q { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; line-height: 1.4; }
@@ -218,6 +250,16 @@
     .dialog-title { font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
     .dialog-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.55; margin-bottom: 20px; }
     .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .model-options { display: flex; flex-direction: column; gap: 6px; }
+    .model-option { display: block; width: 100%; text-align: left; background: var(--navy); border: 1px solid var(--border-light); border-radius: var(--radius-sm);
+      padding: 10px 12px; cursor: pointer; transition: all 0.15s; font-family: 'Inter',sans-serif; }
+    .model-option:hover { border-color: var(--border-light); background: rgba(255,255,255,0.03); }
+    .model-option.selected { border-color: var(--teal); background: var(--teal-dim); }
+    .model-option-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+    .model-option-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .model-option-check { font-size: 12px; color: var(--teal); font-weight: 700; }
+    .model-option-tier { font-size: 11px; color: var(--text-secondary); margin-bottom: 3px; }
+    .model-option-price { font-size: 10.5px; color: var(--text-muted); font-family: monospace; }
 
     /* ── TOAST ── */
     .toast { position: fixed; bottom: 24px; right: 24px; background: var(--navy-mid); border: 1px solid var(--teal); border-radius: var(--radius-sm);
@@ -236,6 +278,17 @@ const { useState, useRef, useEffect, useCallback } = React;
 const PORTFOLIO_KEY = 'storyready_portfolio';
 const SESSION_CACHE_KEY = 'storyready_session_cache';
 const API_KEY_STORAGE = 'storyready_api_key';
+const MODEL_STORAGE = 'storyready_selected_model';
+const DEFAULT_MODEL = 'claude-sonnet-4-6';
+// Pricing per million tokens (USD). Update if Anthropic pricing changes.
+const MODEL_PRICING = {
+  'claude-opus-4-8':   { input: 15.00, output: 75.00, label: 'Claude Opus 4.8',   tier: 'Most capable' },
+  'claude-opus-4-7':   { input: 15.00, output: 75.00, label: 'Claude Opus 4.7',   tier: 'Most capable' },
+  'claude-opus-4-6':   { input: 15.00, output: 75.00, label: 'Claude Opus 4.6',   tier: 'Most capable' },
+  'claude-sonnet-4-6': { input: 3.00,  output: 15.00, label: 'Claude Sonnet 4.6', tier: 'Balanced — recommended' },
+  'claude-haiku-4-5-20251001': { input: 0.80, output: 4.00, label: 'Claude Haiku 4.5', tier: 'Fastest & cheapest' },
+};
+const MODEL_OPTIONS = Object.keys(MODEL_PRICING);
 
 const INTERVIEW_QUESTIONS = [
   "Tell me about a time when you took a risk and failed.",
@@ -298,9 +351,49 @@ function saveApiKey(key) {
 function clearApiKey() {
   try { localStorage.removeItem(API_KEY_STORAGE); } catch {}
 }
+function loadSelectedModel() {
+  try {
+    const saved = localStorage.getItem(MODEL_STORAGE);
+    return (saved && MODEL_PRICING[saved]) ? saved : DEFAULT_MODEL;
+  } catch { return DEFAULT_MODEL; }
+}
+function saveSelectedModel(model) {
+  try { localStorage.setItem(MODEL_STORAGE, model); } catch {}
+}
+
+// ── JSON REPAIR ────────────────────────────────────────────────────────────────
+// Best-effort recovery if a response got cut off mid-JSON (e.g. hit token limit).
+// Closes any unterminated string and balances brackets so JSON.parse can succeed,
+// even if it means dropping the last incomplete item.
+function tryRepairJson(raw) {
+  let str = raw.trim().replace(/```json|```/g, '').trim();
+  // If there's an odd number of unescaped quotes, the last string is unterminated — close it.
+  const quoteMatches = str.match(/(?<!\\)"/g) || [];
+  if (quoteMatches.length % 2 !== 0) str += '"';
+  // Trim back to the last fully-closed object/array element to drop any dangling partial entry.
+  const lastGoodCloseBrace = Math.max(str.lastIndexOf('},'), str.lastIndexOf('}\n'), str.lastIndexOf('} '));
+  // Balance brackets/braces by appending whatever is missing.
+  const opens = { '{': 0, '[': 0 };
+  let inString = false, escape = false;
+  for (const ch of str) {
+    if (escape) { escape = false; continue; }
+    if (ch === '\\') { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') opens['{']++;
+    else if (ch === '}') opens['{']--;
+    else if (ch === '[') opens['[']++;
+    else if (ch === ']') opens['[']--;
+  }
+  // Strip trailing comma before we close things out
+  str = str.replace(/,\s*$/, '');
+  str += ']'.repeat(Math.max(0, opens['['])) ;
+  str += '}'.repeat(Math.max(0, opens['{']));
+  return JSON.parse(str);
+}
 
 // ── API ────────────────────────────────────────────────────────────────────────
-async function callClaude(messages, systemPrompt, apiKey) {
+async function callClaude(messages, systemPrompt, apiKey, maxTokens, model) {
   if (!apiKey) throw new Error('NO_API_KEY');
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -310,14 +403,30 @@ async function callClaude(messages, systemPrompt, apiKey) {
       "anthropic-version": "2023-06-01",
       "anthropic-dangerous-direct-browser-access": "true",
     },
-    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, system: systemPrompt, messages }),
+    body: JSON.stringify({ model: model || DEFAULT_MODEL, max_tokens: maxTokens || 1000, system: systemPrompt, messages }),
   });
   const data = await response.json();
   if (data.error) {
     if (data.error.type === 'authentication_error') throw new Error('INVALID_API_KEY');
     throw new Error(data.error.message);
   }
-  return data.content[0].text;
+  if (data.stop_reason === 'max_tokens') {
+    throw new Error('TRUNCATED_RESPONSE');
+  }
+  return { text: data.content[0].text, usage: data.usage || null };
+}
+
+function estimateCost(usage, model) {
+  if (!usage) return 0;
+  const pricing = MODEL_PRICING[model || DEFAULT_MODEL] || MODEL_PRICING[DEFAULT_MODEL];
+  const inputCost = (usage.input_tokens / 1_000_000) * pricing.input;
+  const outputCost = (usage.output_tokens / 1_000_000) * pricing.output;
+  return inputCost + outputCost;
+}
+
+function formatCost(cost) {
+  if (cost < 0.01) return '< $0.01';
+  return `$${cost.toFixed(2)}`;
 }
 
 const REFINE_PROMPT = `You are a world-class FAANG interview coach specializing in TPM behavioral interviews.
@@ -494,16 +603,59 @@ function FullOutput({ output }) {
   );
 }
 
+// Tabbed variant used in the Portfolio — Refined Response stays pinned above the tabs,
+// the remaining four sections (STAR / LPs / Follow-Ups / Question Mapping) live in tabs.
+function TabbedOutput({ output, entryId }) {
+  const [activeTab, setActiveTab] = useState('star');
+
+  const tabs = [
+    { key: 'star', label: 'STAR Format', badge: 'badge-star' },
+    { key: 'lp', label: 'Leadership Principles', badge: 'badge-lp' },
+    { key: 'fq', label: 'Follow-Up Questions', badge: 'badge-fq' },
+    { key: 'qm', label: 'Other Questions', badge: 'badge-qm' },
+  ];
+
+  return (
+    <>
+      <div className="output-section">
+        <div className="section-header"><span className="section-badge badge-star">✦ Refined Response</span></div>
+        <div className="refined-box">{output.refinedResponse}</div>
+      </div>
+
+      <div className="output-tabs-row">
+        {tabs.map(t => (
+          <button
+            key={t.key}
+            className={`output-tab-btn ${activeTab === t.key ? 'active' : ''}`}
+            onClick={() => setActiveTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="output-tab-panel">
+        {activeTab === 'star' && <STAROutput star={output.star} />}
+        {activeTab === 'lp' && <LPOutput principles={output.leadershipPrinciples} />}
+        {activeTab === 'fq' && <FQOutput questions={output.followUpQuestions} />}
+        {activeTab === 'qm' && <QMOutput mappings={output.questionMapping} />}
+      </div>
+    </>
+  );
+}
+
 // ── API KEY MODAL ──────────────────────────────────────────────────────────────
-function ApiKeyModal({ onSave, onCancel, existingKey }) {
+function ApiKeyModal({ onSave, onCancel, existingKey, selectedModel, onSelectModel }) {
   const [key, setKey] = useState(existingKey || '');
   const [showKey, setShowKey] = useState(false);
   const [error, setError] = useState('');
+  const [model, setModel] = useState(selectedModel || DEFAULT_MODEL);
 
   const handleSave = () => {
     const trimmed = key.trim();
     if (!trimmed) { setError('Please enter an API key.'); return; }
     if (!trimmed.startsWith('sk-ant-')) { setError('That doesn\'t look like a valid Anthropic API key. Keys start with "sk-ant-".'); return; }
+    onSelectModel(model);
     onSave(trimmed);
   };
 
@@ -529,8 +681,34 @@ function ApiKeyModal({ onSave, onCancel, existingKey }) {
           </div>
           {error && <div style={{fontSize:11,color:'#F87171',marginTop:6}}>{error}</div>}
         </div>
-        <div style={{background:'var(--navy)',border:'1px solid var(--border)',borderRadius:8,padding:'10px 12px',marginBottom:18,fontSize:11.5,color:'var(--text-secondary)',lineHeight:1.55}}>
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:11,fontWeight:600,color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:8}}>Model</div>
+          <div className="model-options">
+            {MODEL_OPTIONS.map(m => {
+              const p = MODEL_PRICING[m];
+              return (
+                <button
+                  key={m}
+                  className={`model-option ${model === m ? 'selected' : ''}`}
+                  onClick={() => setModel(m)}
+                  type="button"
+                >
+                  <div className="model-option-top">
+                    <span className="model-option-name">{p.label}</span>
+                    {model === m && <span className="model-option-check">✓</span>}
+                  </div>
+                  <div className="model-option-tier">{p.tier}</div>
+                  <div className="model-option-price">${p.input.toFixed(2)} / ${p.output.toFixed(2)} per M tokens (in/out)</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div style={{background:'var(--navy)',border:'1px solid var(--border)',borderRadius:8,padding:'10px 12px',marginBottom:12,fontSize:11.5,color:'var(--text-secondary)',lineHeight:1.55}}>
           Don't have a key? Get one free at <a href="https://console.anthropic.com" target="_blank" rel="noopener" style={{color:'var(--teal)'}}>console.anthropic.com</a> → API Keys → Create Key. New accounts get free starting credits.
+        </div>
+        <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:18,lineHeight:1.5}}>
+          💰 A typical story session costs roughly $0.01–$0.05 with Sonnet, less with Haiku, more with Opus. StoryReady shows your exact usage and cost after every story.
         </div>
         <div className="dialog-actions">
           <button className="btn-ghost" onClick={onCancel}>Cancel</button>
@@ -563,7 +741,7 @@ function Toast({ msg }) {
 }
 
 // ── OUTPUT PANEL ───────────────────────────────────────────────────────────────
-function OutputPanel({ output, question, isProcessing, onSaveToPortfolio, alreadySaved }) {
+function OutputPanel({ output, question, isProcessing, onSaveToPortfolio, alreadySaved, usage, storyCost, model }) {
   const [toast, setToast] = useState(null);
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
 
@@ -595,6 +773,13 @@ function OutputPanel({ output, question, isProcessing, onSaveToPortfolio, alread
           </div>
         )}
       </div>
+      {output && usage && (
+        <div className="usage-bar">
+          <span className="usage-chip">🔢 {(usage.input_tokens + usage.output_tokens).toLocaleString()} tokens</span>
+          <span className="usage-chip usage-chip-cost">💰 {formatCost(storyCost)} this story</span>
+          <span className="usage-model-label">{(MODEL_PRICING[model] || MODEL_PRICING[DEFAULT_MODEL]).label}</span>
+        </div>
+      )}
       <div className="output-content">
         {!output && !isProcessing && (
           <div className="empty-state">
@@ -622,18 +807,40 @@ function PortfolioScreen({ portfolio, onBack, onGoHome, onDeleteEntry, onDownloa
   const [expanded, setExpanded] = useState({});
   const [toast, setToast] = useState(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState({});
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
 
   const toggle = (id) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
 
-  const downloadOne = (entry) => {
-    downloadText(generateStoryText(entry.question, entry.output), `StoryReady_${entry.id}.txt`);
-    showToast('Downloaded!');
+  const totalCost = portfolio.reduce((sum, e) => sum + (e.cost || 0), 0);
+  const totalTokens = portfolio.reduce((sum, e) => sum + (e.usage ? (e.usage.input_tokens + e.usage.output_tokens) : 0), 0);
+  const entriesWithCostData = portfolio.filter(e => e.cost !== undefined).length;
+  const hasLegacyEntries = entriesWithCostData < portfolio.length;
+
+  const selectedCount = Object.values(selectedIds).filter(Boolean).length;
+
+  const enterSelectMode = () => { setSelectMode(true); setSelectedIds({}); };
+  const exitSelectMode = () => { setSelectMode(false); setSelectedIds({}); };
+  const toggleSelect = (id) => setSelectedIds(prev => ({ ...prev, [id]: !prev[id] }));
+  const selectAll = () => {
+    const all = {};
+    portfolio.forEach(e => { all[e.id] = true; });
+    setSelectedIds(all);
   };
+  const deselectAll = () => setSelectedIds({});
 
   const handleDownloadAll = () => {
     onDownloadAll();
     showToast('Portfolio downloaded!');
+  };
+
+  const handleDownloadSelected = () => {
+    const entries = portfolio.filter(e => selectedIds[e.id]);
+    if (!entries.length) return;
+    onDownloadAll(entries);
+    showToast(`Downloaded ${entries.length} ${entries.length === 1 ? 'story' : 'stories'}!`);
+    exitSelectMode();
   };
 
   const handleClearAll = () => {
@@ -650,18 +857,44 @@ function PortfolioScreen({ portfolio, onBack, onGoHome, onDeleteEntry, onDownloa
           <button className="btn-ghost" onClick={onGoHome}>⌂ Home</button>
           <div>
             <div className="portfolio-title">Story Portfolio</div>
-            <div className="portfolio-count">{portfolio.length} {portfolio.length === 1 ? 'story' : 'stories'} saved</div>
+            <div className="portfolio-count">
+              {portfolio.length} {portfolio.length === 1 ? 'story' : 'stories'} saved
+              {hasLegacyEntries && entriesWithCostData > 0 && <span style={{opacity:0.7}}> · cost data unavailable for some older entries</span>}
+            </div>
           </div>
         </div>
-        <div style={{display:'flex',gap:'8px'}}>
-          {portfolio.length > 0 && (
+        <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+          {portfolio.length > 0 && totalCost > 0 && (
+            <div className="portfolio-total-cost" title={`${totalTokens.toLocaleString()} total tokens across ${entriesWithCostData} ${entriesWithCostData===1?'story':'stories'}`}>
+              <span className="portfolio-total-cost-label">Total spent</span>
+              <span className="portfolio-total-cost-value">💰 {formatCost(totalCost)}</span>
+            </div>
+          )}
+          {portfolio.length > 0 && !selectMode && (
             <>
+              <button className="btn-ghost" onClick={enterSelectMode}>☑ Select</button>
               <button className="btn-ghost" onClick={() => setConfirmClear(true)}>🗑 Clear All</button>
               <button className="btn-teal" onClick={handleDownloadAll}>⬇ Download All</button>
             </>
           )}
         </div>
       </div>
+
+      {selectMode && (
+        <div className="select-mode-bar">
+          <div className="select-mode-bar-left">
+            <span className="select-mode-count">{selectedCount} of {portfolio.length} selected</span>
+            <button className="btn-ghost" onClick={selectAll}>Select All</button>
+            <button className="btn-ghost" onClick={deselectAll}>Deselect All</button>
+          </div>
+          <div className="select-mode-bar-right">
+            <button className="btn-ghost" onClick={exitSelectMode}>Cancel</button>
+            <button className="btn-teal" onClick={handleDownloadSelected} disabled={selectedCount === 0}>
+              ⬇ Download Selected {selectedCount > 0 ? `(${selectedCount})` : ''}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="portfolio-content">
         {portfolio.length === 0 ? (
@@ -674,8 +907,18 @@ function PortfolioScreen({ portfolio, onBack, onGoHome, onDeleteEntry, onDownloa
         ) : (
           <div className="portfolio-grid">
             {portfolio.map((entry, idx) => (
-              <div key={entry.id} className="portfolio-card">
-                <div className="portfolio-card-header" onClick={() => toggle(entry.id)}>
+              <div key={entry.id} className={`portfolio-card ${selectMode && selectedIds[entry.id] ? 'card-selected' : ''}`}>
+                <div
+                  className="portfolio-card-header"
+                  onClick={() => selectMode ? toggleSelect(entry.id) : toggle(entry.id)}
+                >
+                  {selectMode && (
+                    <div className="portfolio-checkbox-wrap" onClick={e => { e.stopPropagation(); toggleSelect(entry.id); }}>
+                      <div className={`portfolio-checkbox ${selectedIds[entry.id] ? 'checked' : ''}`}>
+                        {selectedIds[entry.id] && '✓'}
+                      </div>
+                    </div>
+                  )}
                   <div className="portfolio-card-meta">
                     <div className="portfolio-card-q">
                       <span style={{color:'var(--text-muted)',fontSize:'11px',fontWeight:600,marginRight:'8px'}}>#{idx+1}</span>
@@ -685,21 +928,27 @@ function PortfolioScreen({ portfolio, onBack, onGoHome, onDeleteEntry, onDownloa
                       {(entry.output.leadershipPrinciples || []).filter(lp => lp.strength === 'Strong').slice(0,3).map((lp,i) => (
                         <span key={i} className="portfolio-tag">{lp.name}</span>
                       ))}
+                      {entry.cost !== undefined && entry.cost > 0 && (
+                        <span className="portfolio-tag" style={{color:'var(--teal)',borderColor:'rgba(0,196,180,0.25)'}}>💰 {formatCost(entry.cost)}</span>
+                      )}
                       <span className="portfolio-tag" style={{color:'var(--text-muted)'}}>
                         {new Date(entry.savedAt).toLocaleDateString('en-US', {month:'short',day:'numeric'})}
                       </span>
                     </div>
                   </div>
-                  <div className="portfolio-card-actions" onClick={e => e.stopPropagation()}>
-                    <button className="btn-ghost" onClick={() => downloadOne(entry)}>⬇</button>
-                    <button className="btn-danger" onClick={() => onDeleteEntry(entry.id)}>✕</button>
-                    <button className="portfolio-expand-btn">{expanded[entry.id] ? '▲' : '▼'}</button>
+                  {!selectMode && (
+                    <div className="portfolio-card-actions" onClick={e => e.stopPropagation()}>
+                      <button className="btn-danger" onClick={() => onDeleteEntry(entry.id)}>✕</button>
+                      <button className="portfolio-expand-btn" onClick={() => toggle(entry.id)}>{expanded[entry.id] ? '▲' : '▼'}</button>
+                    </div>
+                  )}
+                </div>
+                {!selectMode && (
+                  <div className={`portfolio-card-body ${expanded[entry.id] ? 'open' : ''}`}>
+                    <div className="portfolio-divider" />
+                    {expanded[entry.id] && <TabbedOutput output={entry.output} entryId={entry.id} />}
                   </div>
-                </div>
-                <div className={`portfolio-card-body ${expanded[entry.id] ? 'open' : ''}`}>
-                  <div className="portfolio-divider" />
-                  <FullOutput output={entry.output} />
-                </div>
+                )}
               </div>
             ))}
           </div>
@@ -777,7 +1026,13 @@ function App() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [toast, setToast] = useState(null);
   const [apiKey, setApiKey] = useState(loadApiKey);
+  const [selectedModel, setSelectedModel] = useState(loadSelectedModel);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [retryAvailable, setRetryAvailable] = useState(null);
+  const [outputUsage, setOutputUsage] = useState(null);
+  const [outputModel, setOutputModel] = useState(null);
+  const [sessionCost, setSessionCost] = useState(0);
+  const coachingCostThisStory = useRef(0);
   const [pendingAction, setPendingAction] = useState(null); // stores what to do after key is provided
   const messagesEndRef = useRef(null);
 
@@ -789,6 +1044,11 @@ function App() {
     saveApiKey(key);
     setShowApiKeyModal(false);
     showToast('API key saved!');
+  };
+
+  const handleSelectModel = (model) => {
+    setSelectedModel(model);
+    saveSelectedModel(model);
   };
 
   const handleClearApiKey = () => {
@@ -869,16 +1129,41 @@ function App() {
     setIsProcessing(true); setProgress(80);
     try {
       const prompt = `Interview Question: "${finalQuestion}"\n\nUser's story:\n${storyText}`;
-      const result = await callClaude([{ role:'user', content: prompt }], REFINE_PROMPT, apiKey);
+      const { text: result, usage } = await callClaude([{ role:'user', content: prompt }], REFINE_PROMPT, apiKey, 4096, selectedModel);
       let parsed;
-      try { parsed = JSON.parse(result); } catch { parsed = JSON.parse(result.replace(/```json|```/g,'').trim()); }
-      setOutput(parsed); setProgress(100); setStep('done');
+      try {
+        parsed = JSON.parse(result);
+      } catch {
+        try { parsed = tryRepairJson(result); }
+        catch { throw new Error('PARSE_FAILED'); }
+      }
+      const storyCost = estimateCost(usage, selectedModel) + coachingCostThisStory.current;
+      setOutput(parsed); setOutputUsage(usage); setOutputModel(selectedModel); setProgress(100); setStep('done'); setRetryAvailable(null);
+      setSessionCost(prev => prev + storyCost);
+      coachingCostThisStory.current = 0;
       addMessage('ai', "Your story is ready! 🎉 Check the output panel — you can copy, download, or save it to your portfolio.");
     } catch (err) {
-      if (err.message === 'NO_API_KEY') { setShowApiKeyModal(true); setProgress(70); }
-      else if (err.message === 'INVALID_API_KEY') { addMessage('ai', "That API key was rejected by Anthropic. Please check it and try again."); setApiKey(''); clearApiKey(); setShowApiKeyModal(true); }
-      else addMessage('ai', `Something went wrong: ${err.message}. Please try again.`);
+      setProgress(70);
+      if (err.message === 'NO_API_KEY') {
+        setShowApiKeyModal(true);
+      } else if (err.message === 'INVALID_API_KEY') {
+        addMessage('ai', "That API key was rejected by Anthropic. Please check it and try again.");
+        setApiKey(''); clearApiKey(); setShowApiKeyModal(true);
+      } else if (err.message === 'TRUNCATED_RESPONSE' || err.message === 'PARSE_FAILED') {
+        addMessage('ai', "The response got cut off before it finished generating — this can happen with longer or more detailed stories. Click 'Retry' below to try again.");
+        setRetryAvailable({ fullHistory, storyText });
+      } else {
+        addMessage('ai', `Something went wrong: ${err.message}. Click 'Retry' below to try again.`);
+        setRetryAvailable({ fullHistory, storyText });
+      }
     } finally { setIsProcessing(false); }
+  };
+
+  const handleRetry = () => {
+    if (!retryAvailable) return;
+    const { fullHistory, storyText } = retryAvailable;
+    setRetryAvailable(null);
+    processStory(fullHistory, storyText);
   };
 
   const handleSend = async () => {
@@ -893,16 +1178,20 @@ function App() {
     setIsTyping(true);
     try {
       const coachMessages = newHistory.map(m => ({ role: m.role==='ai'?'assistant':'user', content: m.content }));
-      const resp = await callClaude(coachMessages, CHAT_PROMPT, apiKey);
+      const { text: resp, usage } = await callClaude(coachMessages, CHAT_PROMPT, apiKey, 1000, selectedModel);
+      const turnCost = estimateCost(usage, selectedModel);
       setIsTyping(false);
       if (resp.includes('READY_TO_PROCESS')) {
         const clean = resp.replace('READY_TO_PROCESS','').trim();
         if (clean) addMessage('ai', clean);
         setProgress(70);
+        coachingCostThisStory.current += turnCost;
         await processStory(newHistory, newHistory.filter(m=>m.role==='user').map(m=>m.content).join('\n\n'));
       } else {
         addMessage('ai', resp);
         setConversationHistory([...newHistory, { role:'ai', content: resp }]);
+        coachingCostThisStory.current += turnCost;
+        setSessionCost(prev => prev + turnCost);
       }
     } catch (err) {
       setIsTyping(false);
@@ -919,12 +1208,22 @@ function App() {
     clearSessionCache();
     setStep('question'); setSelectedQ(''); setCustomQ('');
     setMessages([{ role:'ai', content:"Session reset. Choose a new question to get started." }]);
-    setInput(''); setOutput(null); setConversationHistory([]); setProgress(10); setIsProcessing(false); setOutputSavedId(null);
+    setInput(''); setOutput(null); setConversationHistory([]); setProgress(10); setIsProcessing(false); setOutputSavedId(null); setRetryAvailable(null);
+    setOutputUsage(null); coachingCostThisStory.current = 0;
   };
 
   const saveToPortfolio = () => {
     if (!output) return;
-    const entry = { id: Date.now().toString(), question: finalQuestion, output, savedAt: new Date().toISOString() };
+    const cost = estimateCost(outputUsage, outputModel);
+    const entry = {
+      id: Date.now().toString(),
+      question: finalQuestion,
+      output,
+      savedAt: new Date().toISOString(),
+      usage: outputUsage,
+      model: outputModel,
+      cost,
+    };
     const updated = [...portfolio, entry];
     setPortfolio(updated); savePortfolio(updated);
     setOutputSavedId(entry.id);
@@ -936,11 +1235,13 @@ function App() {
     setPortfolio(updated); savePortfolio(updated);
   };
 
-  const downloadPortfolio = () => {
-    if (!portfolio.length) return;
-    const header = ['STORYREADY — INTERVIEW STORY PORTFOLIO', `Generated ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}`, `${portfolio.length} stories`, '═'.repeat(60), ''].join('\n');
-    const body = portfolio.map((e,i) => generateStoryText(e.question, e.output, i)).join('\n\n' + '═'.repeat(60) + '\n\n');
-    downloadText(header + body, 'StoryReady_Portfolio.txt');
+  const downloadPortfolio = (entriesToDownload) => {
+    const entries = entriesToDownload || portfolio;
+    if (!entries.length) return;
+    const isPartial = entries.length !== portfolio.length;
+    const header = ['STORYREADY — INTERVIEW STORY PORTFOLIO', `Generated ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}`, `${entries.length} ${isPartial ? 'selected ' : ''}stories`, '═'.repeat(60), ''].join('\n');
+    const body = entries.map((e,i) => generateStoryText(e.question, e.output, i)).join('\n\n' + '═'.repeat(60) + '\n\n');
+    downloadText(header + body, isPartial ? 'StoryReady_SelectedStories.txt' : 'StoryReady_Portfolio.txt');
   };
 
   const inputDisabled = isTyping || isProcessing || step === 'done' || step === 'question';
@@ -970,8 +1271,11 @@ function App() {
             </div>
             <div className="header-actions">
               <span className={`step-pill ${stepClass}`}>{stepLabel[step]}</span>
-              <button className="btn-ghost" onClick={() => setShowApiKeyModal(true)} title="Manage API key">
-                {apiKey ? '🔑 Key Connected' : '🔑 Connect Key'}
+              {sessionCost > 0 && (
+                <span className="cost-pill" title="Estimated total API cost this session">💰 {formatCost(sessionCost)}</span>
+              )}
+              <button className="btn-ghost" onClick={() => setShowApiKeyModal(true)} title="Manage API key & model">
+                {apiKey ? `🔑 ${MODEL_PRICING[selectedModel].label}` : '🔑 Connect Key'}
               </button>
               <button className="btn-ghost" onClick={goToLanding} title="Back to home">⌂ Home</button>
               <button className="btn-ghost" onClick={() => goToPortfolio('app')} title="View portfolio">📚 {portfolio.length > 0 ? `(${portfolio.length})` : ''}</button>
@@ -1010,6 +1314,13 @@ function App() {
             <div ref={messagesEndRef} />
           </div>
 
+          {retryAvailable && !isProcessing && (
+            <div className="retry-banner">
+              <span>⚠️ Story generation didn't complete.</span>
+              <button className="btn-teal" onClick={handleRetry}>↻ Retry</button>
+            </div>
+          )}
+
           <div className="chat-input-area">
             <div className="chat-input-wrap">
               <textarea className="chat-textarea" value={input} onChange={e=>setInput(e.target.value)} onKeyDown={handleKeyDown}
@@ -1023,7 +1334,8 @@ function App() {
 
         {/* OUTPUT */}
         <OutputPanel output={output} question={finalQuestion} isProcessing={isProcessing}
-          onSaveToPortfolio={saveToPortfolio} alreadySaved={!!outputSavedId} />
+          onSaveToPortfolio={saveToPortfolio} alreadySaved={!!outputSavedId}
+          usage={outputUsage} storyCost={estimateCost(outputUsage, outputModel)} model={outputModel} />
       </div>
 
       {confirmReset && (
@@ -1031,7 +1343,8 @@ function App() {
           confirmLabel="Reset Session" onConfirm={doReset} onCancel={() => setConfirmReset(false)} danger />
       )}
       {showApiKeyModal && (
-        <ApiKeyModal existingKey={apiKey} onSave={handleSaveApiKey} onCancel={() => setShowApiKeyModal(false)} />
+        <ApiKeyModal existingKey={apiKey} onSave={handleSaveApiKey} onCancel={() => setShowApiKeyModal(false)}
+          selectedModel={selectedModel} onSelectModel={handleSelectModel} />
       )}
       <Toast msg={toast} />
     </div>
