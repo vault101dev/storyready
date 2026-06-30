@@ -68,6 +68,8 @@
     .download-menu-item { display: flex; align-items: center; gap: 9px; width: 100%; background: transparent; border: none; border-radius: 6px;
       padding: 8px 10px; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; text-align: left; font-family: 'Inter',sans-serif; transition: all 0.12s; }
     .download-menu-item:hover { background: rgba(0,196,180,0.1); color: var(--text-primary); }
+    .download-menu-section-label { font-size: 9.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 10px 3px; }
+    .download-menu-divider { height: 1px; background: var(--border); margin: 4px 2px; }
 
     /* ── PROGRESS ── */
     .progress-bar { height: 2px; background: var(--border); }
@@ -653,7 +655,8 @@ async function buildDocxBlob(documentXml) {
     { name: 'word/document.xml', content: documentXml },
   ];
 
-  return buildZip(files);
+  const zipBytes = buildZip(files);
+  return new Blob([zipBytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
 }
 
 // Tiny, dependency-free ZIP writer (STORE method = no compression, which is valid ZIP
@@ -749,7 +752,7 @@ function buildZip(files) {
   centralRecords.forEach(r => { zipBytes.set(r, pos); pos += r.length; });
   zipBytes.set(endRecord, pos);
 
-  return new Blob([zipBytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  return zipBytes;
 }
 
 async function downloadDocx(entries, filename) {
@@ -761,22 +764,205 @@ async function downloadDocx(entries, filename) {
   URL.revokeObjectURL(url);
 }
 
+// ── EXCEL (.xlsx) GENERATION ──────────────────────────────────────────────────
+// Builds a real, valid .xlsx (SpreadsheetML) file entirely client-side — no server,
+// no npm packages. Excel, Google Sheets, and LibreOffice Calc all open this natively.
+// Reuses the same hand-rolled buildZip() used for .docx, since .xlsx is also just a ZIP of XML.
+function xlsxColLetter(n) {
+  // 0-indexed column number → Excel column letter (0 → A, 25 → Z, 26 → AA, ...)
+  let s = '';
+  n = n + 1;
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    s = String.fromCharCode(65 + rem) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+
+function xlsxEscape(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\r\n/g, '\n'); // normalize line endings; XLSX inline strings handle \n fine
+}
+
+function buildSheetXml(rows, sharedStrings) {
+  // rows: array of arrays (cell values, all strings for simplicity — readable & safe in Sheets/Excel/LibreOffice)
+  const colCount = Math.max(...rows.map(r => r.length), 1);
+  const colWidths = [];
+  for (let c = 0; c < colCount; c++) {
+    let maxLen = 10;
+    rows.forEach(r => { if (r[c] && String(r[c]).length > maxLen) maxLen = Math.min(String(r[c]).length, 60); });
+    colWidths.push(maxLen);
+  }
+  const colsXml = `<cols>${colWidths.map((w,i) => `<col min="${i+1}" max="${i+1}" width="${w+2}" customWidth="1"/>`).join('')}</cols>`;
+
+  const rowsXml = rows.map((row, rIdx) => {
+    const cellsXml = row.map((val, cIdx) => {
+      const ref = `${xlsxColLetter(cIdx)}${rIdx + 1}`;
+      const text = val === null || val === undefined ? '' : String(val);
+      const idx = sharedStrings.add(text);
+      const styleAttr = rIdx === 0 ? ' s="1"' : ''; // style 1 = header row (bold)
+      return `<c r="${ref}" t="s"${styleAttr}><v>${idx}</v></c>`;
+    }).join('');
+    return `<row r="${rIdx + 1}">${cellsXml}</row>`;
+  }).join('');
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  ${colsXml}
+  <sheetData>${rowsXml}</sheetData>
+</worksheet>`;
+}
+
+function makeSharedStringsCollector() {
+  const strings = [];
+  const index = new Map();
+  return {
+    add(text) {
+      if (index.has(text)) return index.get(text);
+      const i = strings.length;
+      strings.push(text);
+      index.set(text, i);
+      return i;
+    },
+    toXml() {
+      const items = strings.map(s => `<si><t xml:space="preserve">${xlsxEscape(s)}</t></si>`).join('');
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${strings.length}" uniqueCount="${strings.length}">${items}</sst>`;
+    }
+  };
+}
+
+function generateStoryRows(entries) {
+  const headers = ['Story #', 'Question', 'Refined Response', 'Situation', 'Task', 'Action', 'Result',
+    'Leadership Principles (Strong)', 'Leadership Principles (Moderate)',
+    'Follow-Up Questions', 'Other Questions This Story Answers', 'Date Saved', 'Cost'];
+  const rows = [headers];
+
+  entries.forEach((entry, i) => {
+    const { question, output, savedAt, cost } = entry;
+    const star = output.star || {};
+    const strongLPs = (output.leadershipPrinciples || []).filter(lp => lp.strength === 'Strong').map(lp => lp.name).join('; ');
+    const moderateLPs = (output.leadershipPrinciples || []).filter(lp => lp.strength === 'Moderate').map(lp => lp.name).join('; ');
+    const followUps = (output.followUpQuestions || []).map(fq => `[${fq.tag}] ${fq.question}`).join(' | ');
+    const otherQs = (output.questionMapping || []).map(qm => `[${qm.fit}] ${qm.question}`).join(' | ');
+    const dateStr = savedAt ? new Date(savedAt).toLocaleDateString('en-US') : '';
+    const costStr = cost !== undefined ? formatCost(cost) : '';
+
+    rows.push([i + 1, question, output.refinedResponse || '', star.situation || '', star.task || '',
+      star.action || '', star.result || '', strongLPs, moderateLPs, followUps, otherQs, dateStr, costStr]);
+  });
+
+  return rows;
+}
+
+async function buildXlsxBlob(rows) {
+  const sharedStrings = makeSharedStringsCollector();
+  const sheetXml = buildSheetXml(rows, sharedStrings);
+  const sstXml = sharedStrings.toXml();
+
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`;
+
+  const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+
+  const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets><sheet name="Stories" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`;
+
+  const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>
+  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+  // Minimal styles.xml with style index 1 = bold header row
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="2">
+    <font><sz val="11"/><name val="Calibri"/></font>
+    <font><b/><sz val="11"/><name val="Calibri"/><color rgb="FFFFFFFF"/></font>
+  </fonts>
+  <fills count="3">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF0F1C2E"/><bgColor indexed="64"/></patternFill></fill>
+  </fills>
+  <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="2">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>
+  </cellXfs>
+</styleSheet>`;
+
+  const files = [
+    { name: '[Content_Types].xml', content: contentTypes },
+    { name: '_rels/.rels', content: rootRels },
+    { name: 'xl/workbook.xml', content: workbookXml },
+    { name: 'xl/_rels/workbook.xml.rels', content: workbookRels },
+    { name: 'xl/worksheets/sheet1.xml', content: sheetXml },
+    { name: 'xl/sharedStrings.xml', content: sstXml },
+    { name: 'xl/styles.xml', content: stylesXml },
+  ];
+
+  const zipBytes = buildZip(files);
+  return new Blob([zipBytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+async function downloadXlsx(entries, filename) {
+  const rows = generateStoryRows(entries);
+  const blob = await buildXlsxBlob(rows);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ── UNIFIED DOWNLOAD ROUTER ──────────────────────────────────────────────────────
 // entries: array of { question, output, savedAt?, cost? } — single-story downloads
 // pass a one-item array so all formats share the same code path.
-const DOWNLOAD_FORMATS = {
-  txt:    { label: 'Text (.txt)',       icon: '📄', ext: 'txt' },
-  csv:    { label: 'CSV (.csv)',        icon: '📊', ext: 'csv' },
-  docx:   { label: 'Word (.docx)',      icon: '📝', ext: 'docx' },
-  gdocs:  { label: 'Google Docs',       icon: '📑', ext: 'docx' },
-};
+// Grouped by category so the dropdown UI can render section headers.
+const DOWNLOAD_FORMAT_GROUPS = [
+  {
+    label: 'Document',
+    formats: {
+      txt:   { label: 'Text (.txt)',   icon: '📄', ext: 'txt' },
+      docx:  { label: 'Word (.docx)',  icon: '📝', ext: 'docx' },
+      gdocs: { label: 'Google Docs',   icon: '📑', ext: 'docx' },
+    },
+  },
+  {
+    label: 'Spreadsheet',
+    formats: {
+      csv:     { label: 'CSV (.csv)',       icon: '📊', ext: 'csv' },
+      xlsx:    { label: 'Excel (.xlsx)',     icon: '🟢', ext: 'xlsx' },
+      gsheets: { label: 'Google Sheets',     icon: '📈', ext: 'xlsx' },
+    },
+  },
+];
+// Flattened lookup, derived from the groups above — used wherever we just need format metadata.
+const DOWNLOAD_FORMATS = DOWNLOAD_FORMAT_GROUPS.reduce((acc, g) => ({ ...acc, ...g.formats }), {});
 
 async function triggerDownload(format, entries, baseFilename) {
   if (!entries.length) return;
   const filename = `${baseFilename}.${DOWNLOAD_FORMATS[format].ext}`;
 
   if (format === 'txt') {
-    const isPartial = entries.length === 1 && entries[0].__single;
     const header = entries.length > 1
       ? ['STORYREADY — INTERVIEW STORY PORTFOLIO', `Generated ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}`, `${entries.length} stories`, '═'.repeat(60), ''].join('\n')
       : '';
@@ -786,6 +972,8 @@ async function triggerDownload(format, entries, baseFilename) {
     downloadBlob(generateStoryCsv(entries), filename, 'text/csv;charset=utf-8');
   } else if (format === 'docx' || format === 'gdocs') {
     await downloadDocx(entries, filename);
+  } else if (format === 'xlsx' || format === 'gsheets') {
+    await downloadXlsx(entries, filename);
   }
 }
 
@@ -1016,7 +1204,7 @@ function ApiKeyModal({ onSave, onCancel, existingKey, selectedModel, onSelectMod
 // `getEntries` is a function so callers can compute the entry list lazily (e.g. selected items).
 function DownloadMenu({ label, getEntries, baseFilename, buttonClass, disabled, onDownloaded }) {
   const [open, setOpen] = useState(false);
-  const [showGDocsNote, setShowGDocsNote] = useState(false);
+  const [cloudNote, setCloudNote] = useState(null); // 'gdocs' | 'gsheets' | null
   const wrapRef = useRef(null);
 
   useEffect(() => {
@@ -1027,18 +1215,36 @@ function DownloadMenu({ label, getEntries, baseFilename, buttonClass, disabled, 
   }, [open]);
 
   const handlePick = async (format) => {
-    if (format === 'gdocs') { setOpen(false); setShowGDocsNote(true); return; }
+    if (format === 'gdocs' || format === 'gsheets') { setOpen(false); setCloudNote(format); return; }
     setOpen(false);
     const entries = getEntries();
     await triggerDownload(format, entries, baseFilename);
     if (onDownloaded) onDownloaded(format, entries.length);
   };
 
-  const confirmGDocs = async () => {
-    setShowGDocsNote(false);
+  const confirmCloudDownload = async () => {
+    const format = cloudNote;
+    setCloudNote(null);
     const entries = getEntries();
-    await triggerDownload('gdocs', entries, baseFilename);
-    if (onDownloaded) onDownloaded('gdocs', entries.length);
+    await triggerDownload(format, entries, baseFilename);
+    if (onDownloaded) onDownloaded(format, entries.length);
+  };
+
+  const cloudCopy = {
+    gdocs: {
+      title: '📑 Open in Google Docs',
+      fileType: 'Word (.docx)',
+      url: 'https://docs.google.com',
+      urlLabel: 'docs.google.com',
+      btnLabel: 'Download for Google Docs',
+    },
+    gsheets: {
+      title: '📈 Open in Google Sheets',
+      fileType: 'Excel (.xlsx)',
+      url: 'https://sheets.google.com',
+      urlLabel: 'sheets.google.com',
+      btnLabel: 'Download for Google Sheets',
+    },
   };
 
   return (
@@ -1048,28 +1254,34 @@ function DownloadMenu({ label, getEntries, baseFilename, buttonClass, disabled, 
       </button>
       {open && (
         <div className="download-menu">
-          {Object.entries(DOWNLOAD_FORMATS).map(([key, fmt]) => (
-            <button key={key} className="download-menu-item" onClick={() => handlePick(key)}>
-              <span>{fmt.icon}</span><span>{fmt.label}</span>
-            </button>
+          {DOWNLOAD_FORMAT_GROUPS.map((group, gi) => (
+            <div key={group.label}>
+              {gi > 0 && <div className="download-menu-divider" />}
+              <div className="download-menu-section-label">{group.label}</div>
+              {Object.entries(group.formats).map(([key, fmt]) => (
+                <button key={key} className="download-menu-item" onClick={() => handlePick(key)}>
+                  <span>{fmt.icon}</span><span>{fmt.label}</span>
+                </button>
+              ))}
+            </div>
           ))}
         </div>
       )}
-      {showGDocsNote && (
-        <div className="dialog-overlay" onClick={() => setShowGDocsNote(false)}>
+      {cloudNote && (
+        <div className="dialog-overlay" onClick={() => setCloudNote(null)}>
           <div className="dialog" style={{maxWidth:420}} onClick={e => e.stopPropagation()}>
-            <div className="dialog-title">📑 Open in Google Docs</div>
+            <div className="dialog-title">{cloudCopy[cloudNote].title}</div>
             <div className="dialog-desc">
-              Google Docs doesn't allow files to be created directly in your Drive from outside apps without a Google sign-in connection. Here's the fastest path instead:
+              {cloudNote === 'gdocs' ? 'Google Docs' : 'Google Sheets'} doesn't allow files to be created directly in your Drive from outside apps without a Google sign-in connection. Here's the fastest path instead:
             </div>
             <ol style={{fontSize:12.5,color:'var(--text-secondary)',lineHeight:1.8,paddingLeft:18,marginBottom:18}}>
-              <li>We'll download a Word (.docx) file, formatted and ready to go</li>
-              <li>Go to <a href="https://docs.google.com" target="_blank" rel="noopener" style={{color:'var(--teal)'}}>docs.google.com</a> → File → Open → Upload</li>
-              <li>Select the downloaded file — Google Docs converts it automatically</li>
+              <li>We'll download a {cloudCopy[cloudNote].fileType} file, formatted and ready to go</li>
+              <li>Go to <a href={cloudCopy[cloudNote].url} target="_blank" rel="noopener" style={{color:'var(--teal)'}}>{cloudCopy[cloudNote].urlLabel}</a> → File → Open → Upload</li>
+              <li>Select the downloaded file — it converts automatically</li>
             </ol>
             <div className="dialog-actions">
-              <button className="btn-ghost" onClick={() => setShowGDocsNote(false)}>Cancel</button>
-              <button className="btn-teal" onClick={confirmGDocs}>Download for Google Docs</button>
+              <button className="btn-ghost" onClick={() => setCloudNote(null)}>Cancel</button>
+              <button className="btn-teal" onClick={confirmCloudDownload}>{cloudCopy[cloudNote].btnLabel}</button>
             </div>
           </div>
         </div>
