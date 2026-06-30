@@ -495,7 +495,7 @@ function FullOutput({ output }) {
 }
 
 // ── API KEY MODAL ──────────────────────────────────────────────────────────────
-function ApiKeyModal({ onSave, onCancel, existingKey, canCancel }) {
+function ApiKeyModal({ onSave, onCancel, existingKey }) {
   const [key, setKey] = useState(existingKey || '');
   const [showKey, setShowKey] = useState(false);
   const [error, setError] = useState('');
@@ -508,7 +508,7 @@ function ApiKeyModal({ onSave, onCancel, existingKey, canCancel }) {
   };
 
   return (
-    <div className="dialog-overlay" onClick={canCancel ? onCancel : undefined}>
+    <div className="dialog-overlay" onClick={onCancel}>
       <div className="dialog" style={{maxWidth:440}} onClick={e => e.stopPropagation()}>
         <div className="dialog-title">🔑 Connect Your Claude API Key</div>
         <div className="dialog-desc">
@@ -533,7 +533,7 @@ function ApiKeyModal({ onSave, onCancel, existingKey, canCancel }) {
           Don't have a key? Get one free at <a href="https://console.anthropic.com" target="_blank" rel="noopener" style={{color:'var(--teal)'}}>console.anthropic.com</a> → API Keys → Create Key. New accounts get free starting credits.
         </div>
         <div className="dialog-actions">
-          {canCancel && <button className="btn-ghost" onClick={onCancel}>Cancel</button>}
+          <button className="btn-ghost" onClick={onCancel}>Cancel</button>
           <button className="btn-teal" onClick={handleSave}>Save & Continue</button>
         </div>
       </div>
@@ -1031,7 +1031,7 @@ function App() {
           confirmLabel="Reset Session" onConfirm={doReset} onCancel={() => setConfirmReset(false)} danger />
       )}
       {showApiKeyModal && (
-        <ApiKeyModal existingKey={apiKey} canCancel={!!apiKey} onSave={handleSaveApiKey} onCancel={() => setShowApiKeyModal(false)} />
+        <ApiKeyModal existingKey={apiKey} onSave={handleSaveApiKey} onCancel={() => setShowApiKeyModal(false)} />
       )}
       <Toast msg={toast} />
     </div>
